@@ -48,10 +48,10 @@
       currentMessageId = messageId;
     }
 
-    ensureButtons(emailContainer);
+    ensureButtons();
   }
 
-  function ensureButtons(emailContainer) {
+  function ensureButtons() {
     if (document.getElementById(WRAPPER_ID)) {
       return;
     }
@@ -59,15 +59,23 @@
     const wrapper = document.createElement("div");
     wrapper.id = WRAPPER_ID;
     wrapper.className = "yt-ext-actions";
-    wrapper.style.display = "flex";
     wrapper.style.display = "inline-flex";
     wrapper.style.alignItems = "center";
-    wrapper.style.gap = "8px";
+    wrapper.style.gap = "6px";
+    wrapper.style.padding = "8px";
+    wrapper.style.background = "#fff";
+    wrapper.style.border = "1px solid #dadce0";
+    wrapper.style.borderRadius = "8px";
+    wrapper.style.boxShadow = "0 2px 6px rgba(60, 64, 67, 0.15)";
+    wrapper.style.position = "fixed";
+    wrapper.style.top = "16px";
+    wrapper.style.right = "16px";
+    wrapper.style.zIndex = "9999";
 
     const container = document.createElement("div");
     container.id = CONTAINER_ID;
     container.style.display = "inline-flex";
-    container.style.gap = "6px";
+    container.style.gap = "4px";
     container.style.alignItems = "center";
 
     const taskButton = createButton("Create Task", "task");
@@ -79,19 +87,23 @@
     status.id = STATUS_ID;
     status.style.fontSize = "12px";
     status.style.color = "#5f6368";
-    status.style.marginLeft = "8px";
+    status.style.marginLeft = "6px";
 
     wrapper.appendChild(container);
     wrapper.appendChild(status);
 
-    emailContainer.insertBefore(wrapper, emailContainer.firstChild);
+    document.body.appendChild(wrapper);
     console.log("[YT EXT] buttons injected");
+    console.log("[YT EXT] buttons injected next to Gmail actions");
+    console.log("[YT EXT] buttons injected into action row");
+    console.log("[YT EXT] floating buttons injected");
   }
 
   function removeWrapper() {
     const wrapper = document.getElementById(WRAPPER_ID);
     if (wrapper) {
       wrapper.remove();
+      console.log("[YT EXT] floating buttons removed");
     }
   }
 
@@ -100,10 +112,9 @@
     button.type = "button";
     button.textContent = label;
     button.className = "T-I J-J5-Ji";
-    button.style.marginLeft = "4px";
-    button.style.height = "30px";
-    button.style.lineHeight = "30px";
-    button.style.padding = "0 10px";
+    button.style.height = "28px";
+    button.style.lineHeight = "28px";
+    button.style.padding = "0 8px";
     button.style.fontSize = "12px";
     button.style.minWidth = "auto";
 
@@ -236,6 +247,7 @@
     );
     return candidates.find((node) => isVisible(node)) || null;
   }
+
 
   function getBodyText() {
     const candidates = Array.from(document.querySelectorAll("div.a3s"));
