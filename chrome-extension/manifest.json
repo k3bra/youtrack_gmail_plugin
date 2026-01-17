@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail YouTrack Ticket Creator",
+  "version": "0.1.0",
+  "description": "Create YouTrack tickets from Gmail emails.",
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["http://localhost:8000/*"]
+}
