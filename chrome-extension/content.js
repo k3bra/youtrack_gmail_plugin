@@ -5,6 +5,10 @@
   const MODAL_ID = "yt-ticket-modal";
   const OVERLAY_ID = "yt-ticket-overlay";
   const MINIMIZED_ID = "yt-ticket-minimized";
+  const PANEL_WIDTH = "240px";
+  const PANEL_RADIUS = "10px";
+  const PANEL_BORDER = "1px solid #dadce0";
+  const PANEL_SHADOW = "0 2px 6px rgba(60, 64, 67, 0.15)";
   let currentThreadUrl = null;
   let currentMessageId = null;
   let modalState = null;
@@ -44,6 +48,11 @@
     }
 
     ensureButtons();
+    if (modalState) {
+      setFloatingVisible(false);
+    } else {
+      setFloatingVisible(true);
+    }
   }
 
   function ensureButtons() {
@@ -60,13 +69,14 @@
     wrapper.style.gap = "6px";
     wrapper.style.padding = "6px 8px 8px";
     wrapper.style.background = "#fff";
-    wrapper.style.border = "1px solid #dadce0";
-    wrapper.style.borderRadius = "8px";
-    wrapper.style.boxShadow = "0 2px 6px rgba(60, 64, 67, 0.15)";
+    wrapper.style.border = PANEL_BORDER;
+    wrapper.style.borderRadius = PANEL_RADIUS;
+    wrapper.style.boxShadow = PANEL_SHADOW;
     wrapper.style.position = "fixed";
     wrapper.style.bottom = "24px";
     wrapper.style.left = "24px";
     wrapper.style.zIndex = "9999";
+    wrapper.style.width = PANEL_WIDTH;
 
     const dragHandle = document.createElement("div");
     dragHandle.style.width = "100%";
@@ -108,6 +118,14 @@
     }
   }
 
+  function setFloatingVisible(visible) {
+    const wrapper = document.getElementById(WRAPPER_ID);
+    if (!wrapper) {
+      return;
+    }
+    wrapper.style.display = visible ? "flex" : "none";
+  }
+
   function createButton(label, type) {
     const button = document.createElement("button");
     button.type = "button";
@@ -135,6 +153,9 @@
       return;
     }
 
+    modalState = { isMinimized: false };
+    setFloatingVisible(false);
+
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.style.position = "fixed";
@@ -148,8 +169,8 @@
     const modal = document.createElement("div");
     modal.id = MODAL_ID;
     modal.style.background = "#fff";
-    modal.style.border = "1px solid #dadce0";
-    modal.style.borderRadius = "10px";
+    modal.style.border = PANEL_BORDER;
+    modal.style.borderRadius = PANEL_RADIUS;
     modal.style.boxShadow = "0 6px 18px rgba(60, 64, 67, 0.2)";
     modal.style.width = "min(92vw, 520px)";
     modal.style.maxHeight = "80vh";
@@ -157,13 +178,18 @@
     modal.style.padding = "16px";
     modal.style.display = "flex";
     modal.style.flexDirection = "column";
-    modal.style.gap = "12px";
+    modal.style.gap = "14px";
 
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
     header.style.justifyContent = "space-between";
     header.style.gap = "12px";
+    header.style.background = "#f8f9fa";
+    header.style.margin = "-16px -16px 8px";
+    header.style.padding = "10px 12px";
+    header.style.borderBottom = "1px solid #e0e0e0";
+    header.style.borderRadius = `${PANEL_RADIUS} ${PANEL_RADIUS} 0 0`;
 
     const title = document.createElement("div");
     title.textContent = type === "task" ? "Create Task" : "Create Spike";
@@ -173,50 +199,50 @@
 
     const minimizeButton = document.createElement("button");
     minimizeButton.type = "button";
-    minimizeButton.textContent = "Minimize";
+    minimizeButton.textContent = "-";
+    minimizeButton.title = "Minimize";
+    minimizeButton.setAttribute("aria-label", "Minimize");
     minimizeButton.style.border = "1px solid #dadce0";
     minimizeButton.style.background = "#fff";
     minimizeButton.style.color = "#3c4043";
-    minimizeButton.style.padding = "4px 8px";
+    minimizeButton.style.width = "28px";
+    minimizeButton.style.height = "28px";
     minimizeButton.style.borderRadius = "6px";
     minimizeButton.style.cursor = "pointer";
-    minimizeButton.style.fontSize = "12px";
+    minimizeButton.style.fontSize = "16px";
+    minimizeButton.style.lineHeight = "26px";
+    minimizeButton.style.textAlign = "center";
 
     header.appendChild(title);
     header.appendChild(minimizeButton);
 
+    let currentMode = "manual";
+
     const modeWrap = document.createElement("div");
-    modeWrap.style.display = "flex";
-    modeWrap.style.flexDirection = "column";
-    modeWrap.style.gap = "8px";
+    modeWrap.style.display = "inline-flex";
+    modeWrap.style.border = "1px solid #dadce0";
+    modeWrap.style.borderRadius = "8px";
+    modeWrap.style.overflow = "hidden";
 
-    const manualLabel = document.createElement("label");
-    manualLabel.style.display = "flex";
-    manualLabel.style.alignItems = "center";
-    manualLabel.style.gap = "6px";
+    const manualButton = document.createElement("button");
+    manualButton.type = "button";
+    manualButton.textContent = "✍️ Manual";
+    manualButton.style.border = "none";
+    manualButton.style.borderRight = "1px solid #dadce0";
+    manualButton.style.padding = "6px 10px";
+    manualButton.style.fontSize = "12px";
+    manualButton.style.cursor = "pointer";
 
-    const manualRadio = document.createElement("input");
-    manualRadio.type = "radio";
-    manualRadio.name = "yt-mode";
-    manualRadio.value = "manual";
-    manualRadio.checked = true;
-    manualLabel.appendChild(manualRadio);
-    manualLabel.appendChild(document.createTextNode("Write ticket manually"));
+    const aiButton = document.createElement("button");
+    aiButton.type = "button";
+    aiButton.textContent = "🤖 From email";
+    aiButton.style.border = "none";
+    aiButton.style.padding = "6px 10px";
+    aiButton.style.fontSize = "12px";
+    aiButton.style.cursor = "pointer";
 
-    const aiLabel = document.createElement("label");
-    aiLabel.style.display = "flex";
-    aiLabel.style.alignItems = "center";
-    aiLabel.style.gap = "6px";
-
-    const aiRadio = document.createElement("input");
-    aiRadio.type = "radio";
-    aiRadio.name = "yt-mode";
-    aiRadio.value = "ai";
-    aiLabel.appendChild(aiRadio);
-    aiLabel.appendChild(document.createTextNode("Generate from email"));
-
-    modeWrap.appendChild(manualLabel);
-    modeWrap.appendChild(aiLabel);
+    modeWrap.appendChild(manualButton);
+    modeWrap.appendChild(aiButton);
 
     const manualSection = document.createElement("div");
     manualSection.style.display = "flex";
@@ -249,6 +275,11 @@
     aiSection.style.gap = "8px";
 
     const email = extractEmail();
+    const aiHelper = document.createElement("div");
+    aiHelper.textContent = "Edit the email content before generating.";
+    aiHelper.style.fontSize = "12px";
+    aiHelper.style.color = "#5f6368";
+
     const aiBodyInput = document.createElement("textarea");
     aiBodyInput.rows = 10;
     aiBodyInput.value = email ? email.body : "";
@@ -258,6 +289,7 @@
     aiBodyInput.style.fontSize = "13px";
     aiBodyInput.style.resize = "vertical";
 
+    aiSection.appendChild(aiHelper);
     aiSection.appendChild(aiBodyInput);
 
     const status = document.createElement("div");
@@ -308,27 +340,47 @@
     minimizedBar.style.position = "fixed";
     minimizedBar.style.left = "24px";
     minimizedBar.style.bottom = "24px";
-    minimizedBar.style.background = "#fff";
-    minimizedBar.style.border = "1px solid #dadce0";
-    minimizedBar.style.borderRadius = "8px";
-    minimizedBar.style.boxShadow = "0 2px 6px rgba(60, 64, 67, 0.15)";
-    minimizedBar.style.padding = "6px 10px";
+    minimizedBar.style.background = "#f8f9fa";
+    minimizedBar.style.border = PANEL_BORDER;
+    minimizedBar.style.borderRadius = PANEL_RADIUS;
+    minimizedBar.style.boxShadow = PANEL_SHADOW;
+    minimizedBar.style.padding = "4px 8px";
+    minimizedBar.style.width = PANEL_WIDTH;
     minimizedBar.style.display = "none";
     minimizedBar.style.alignItems = "center";
     minimizedBar.style.gap = "8px";
+    minimizedBar.style.justifyContent = "space-between";
     minimizedBar.style.cursor = "pointer";
     minimizedBar.style.zIndex = "10001";
 
-    const minimizedText = document.createElement("div");
+    const minimizedLeft = document.createElement("div");
+    minimizedLeft.style.display = "inline-flex";
+    minimizedLeft.style.alignItems = "center";
+    minimizedLeft.style.gap = "6px";
+
+    const minimizedIcon = document.createElement("span");
+    minimizedIcon.textContent = "📝";
+    minimizedIcon.style.fontSize = "13px";
+
+    const minimizedText = document.createElement("span");
     minimizedText.style.fontSize = "12px";
     minimizedText.style.color = "#3c4043";
 
-    const minimizedAction = document.createElement("span");
-    minimizedAction.textContent = "Open";
-    minimizedAction.style.color = "#1a73e8";
-    minimizedAction.style.fontSize = "12px";
+    minimizedLeft.appendChild(minimizedIcon);
+    minimizedLeft.appendChild(minimizedText);
 
-    minimizedBar.appendChild(minimizedText);
+    const minimizedAction = document.createElement("button");
+    minimizedAction.type = "button";
+    minimizedAction.textContent = "⤢";
+    minimizedAction.title = "Open";
+    minimizedAction.setAttribute("aria-label", "Open");
+    minimizedAction.style.border = "none";
+    minimizedAction.style.background = "transparent";
+    minimizedAction.style.color = "#1a73e8";
+    minimizedAction.style.cursor = "pointer";
+    minimizedAction.style.fontSize = "14px";
+
+    minimizedBar.appendChild(minimizedLeft);
     minimizedBar.appendChild(minimizedAction);
     document.body.appendChild(minimizedBar);
 
@@ -347,20 +399,22 @@
         minimizedBar.parentElement.removeChild(minimizedBar);
       }
       modalState = null;
+      setFloatingVisible(true);
     }
 
     function setLoading(isLoading) {
       submitButton.disabled = isLoading;
       cancelButton.disabled = isLoading;
       minimizeButton.disabled = isLoading;
-      manualRadio.disabled = isLoading;
-      aiRadio.disabled = isLoading;
+      manualButton.disabled = isLoading;
+      aiButton.disabled = isLoading;
       summaryInput.disabled = isLoading;
       descriptionInput.disabled = isLoading;
       aiBodyInput.disabled = isLoading;
       submitButton.style.opacity = isLoading ? "0.7" : "1";
       cancelButton.style.opacity = isLoading ? "0.7" : "1";
       minimizeButton.style.opacity = isLoading ? "0.7" : "1";
+      submitButton.textContent = isLoading ? "Creating..." : "Create Ticket";
       submitButton.style.cursor = isLoading ? "not-allowed" : "pointer";
       cancelButton.style.cursor = isLoading ? "not-allowed" : "pointer";
       minimizeButton.style.cursor = isLoading ? "not-allowed" : "pointer";
@@ -385,17 +439,23 @@
       status.appendChild(link);
     }
 
-    function updateMode() {
-      const isManual = manualRadio.checked;
+    function setMode(mode) {
+      currentMode = mode;
+      const isManual = currentMode === "manual";
       manualSection.style.display = isManual ? "flex" : "none";
       aiSection.style.display = isManual ? "none" : "flex";
+      manualButton.style.background = isManual ? "#e8f0fe" : "#fff";
+      manualButton.style.color = isManual ? "#1a73e8" : "#3c4043";
+      aiButton.style.background = isManual ? "#fff" : "#e8f0fe";
+      aiButton.style.color = isManual ? "#3c4043" : "#1a73e8";
+      manualButton.setAttribute("aria-pressed", isManual ? "true" : "false");
+      aiButton.setAttribute("aria-pressed", isManual ? "false" : "true");
       updateMinimizedText();
     }
 
     function updateMinimizedText() {
       const typeLabel = type === "task" ? "Task" : "Spike";
-      const modeLabel = manualRadio.checked ? "Manual" : "AI";
-      minimizedText.textContent = `${typeLabel} • ${modeLabel} • Draft`;
+      minimizedText.textContent = `${typeLabel} • Draft`;
     }
 
     function minimizeModal() {
@@ -403,16 +463,18 @@
       overlay.style.display = "none";
       minimizedBar.style.display = "flex";
       updateMinimizedText();
+      setFloatingVisible(false);
     }
 
     function restoreModal() {
       modalState.isMinimized = false;
       overlay.style.display = "flex";
       minimizedBar.style.display = "none";
+      setFloatingVisible(false);
     }
 
-    manualRadio.addEventListener("change", updateMode);
-    aiRadio.addEventListener("change", updateMode);
+    manualButton.addEventListener("click", () => setMode("manual"));
+    aiButton.addEventListener("click", () => setMode("ai"));
 
     minimizeButton.addEventListener("click", () => {
       if (minimizeButton.disabled) {
@@ -422,6 +484,11 @@
     });
 
     minimizedBar.addEventListener("click", () => {
+      restoreModal();
+    });
+
+    minimizedAction.addEventListener("click", (event) => {
+      event.stopPropagation();
       restoreModal();
     });
 
@@ -436,7 +503,7 @@
         return;
       }
 
-      const mode = manualRadio.checked ? "manual" : "ai";
+      const mode = currentMode;
       let payload = null;
 
       if (mode === "manual") {
@@ -500,13 +567,13 @@
       );
     });
 
-    modalState = {
+    Object.assign(modalState, {
       type,
       overlay,
       modal,
       minimizedBar,
-      manualRadio,
-      aiRadio,
+      manualButton,
+      aiButton,
       summaryInput,
       descriptionInput,
       aiBodyInput,
@@ -515,9 +582,9 @@
       restore: restoreModal,
       minimize: minimizeModal,
       close: closeModal
-    };
+    });
 
-    updateMode();
+    setMode(currentMode);
     document.addEventListener("keydown", onKeyDown);
   }
 

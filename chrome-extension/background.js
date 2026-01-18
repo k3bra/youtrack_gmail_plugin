@@ -1,5 +1,5 @@
 const BACKEND_URL = "http://localhost:8000/api/tickets/from-email";
-const CLIENT_KEY = "change-me";
+const CLIENT_KEY = "79522295879337155423933099952363QA";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.action !== "create-ticket") {
