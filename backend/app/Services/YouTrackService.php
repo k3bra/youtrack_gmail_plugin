@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class YouTrackService
@@ -25,8 +26,33 @@ class YouTrackService
 
         $issueType = strtolower($type) === 'spike' ? 'Spike' : 'Task';
 
+        $customFields = [
+            [
+                'name' => 'Type',
+                'value' => ['name' => $issueType], // Task | Spike
+            ],
+            [
+                'name' => 'State',
+                'value' => ['name' => 'Draft'],
+            ],
+            [
+                'name' => 'Team(s)',
+                'value' => [
+                    ['name' => 'BE'],
+                ],
+            ],
+            [
+                'name' => 'Epic Name',
+                'value' => ['name' => 'Integrations'],
+            ],
+            [
+                'name' => 'Main topic',
+                'value' => ['name' => 'Chatbot'],
+            ],
+        ];
+
         $payload = [
-            'project' => ['id' => $projectId],
+            'project' => ['shortName' => $projectId],
             'summary' => $summary,
             'description' => $description,
             'issuetype' => ['name' => $issueType],
@@ -36,6 +62,11 @@ class YouTrackService
             ),
         ];
 
+        if ($customFields) {
+            //$payload['customFields'] = $customFields;
+        }
+
+        Log::info('Creating YouTrack issue', $payload);
         $endpoint = rtrim($baseUrl, '/') . '/api/issues?fields=idReadable';
         $response = Http::withToken($token)
             ->acceptJson()

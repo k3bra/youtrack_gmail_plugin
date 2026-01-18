@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class TicketGeneratorService
@@ -53,15 +54,11 @@ class TicketGeneratorService
         if (!is_string($subject)) {
             throw new InvalidArgumentException('Email subject is required.');
         }
-        if (!is_string($from)) {
-            throw new InvalidArgumentException('Email from is required.');
-        }
         if (!is_string($body)) {
             throw new InvalidArgumentException('Email body is required.');
         }
-        if (!is_string($threadUrl)) {
-            throw new InvalidArgumentException('Email thread URL is required.');
-        }
+        $from = is_string($from) ? $from : '';
+        $threadUrl = is_string($threadUrl) ? $threadUrl : '';
 
         $userPrompt = $this->buildUserPrompt(
             $type,
@@ -73,9 +70,40 @@ class TicketGeneratorService
 
         $output = $this->openAiService->generateTicket(self::SYSTEM_PROMPT, $userPrompt);
 
+
+        Log::info('OpenAI output: ' . json_encode($output));
         $this->validateOutput($output, $type);
 
         return $output;
+    }
+
+    public function fromManual(array $payload): array
+    {
+        $type = $payload['type'] ?? null;
+        if (!is_string($type)) {
+            throw new InvalidArgumentException('Ticket type is required.');
+        }
+
+        $type = strtolower($type);
+        if (!in_array($type, ['task', 'spike'], true)) {
+            throw new InvalidArgumentException('Ticket type must be task or spike.');
+        }
+
+        $summary = $payload['summary'] ?? null;
+        $description = $payload['description'] ?? null;
+
+        if (!is_string($summary) || trim($summary) === '') {
+            throw new InvalidArgumentException('Summary is required.');
+        }
+        if (!is_string($description) || trim($description) === '') {
+            throw new InvalidArgumentException('Description is required.');
+        }
+
+        return [
+            'summary' => $summary,
+            'description' => $description,
+            'labels' => [],
+        ];
     }
 
     private function buildUserPrompt(

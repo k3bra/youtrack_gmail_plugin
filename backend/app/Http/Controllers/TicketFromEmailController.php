@@ -17,15 +17,25 @@ class TicketFromEmailController extends Controller
         YouTrackService $youTrackService
     ): JsonResponse {
         $payload = $request->all();
-        $baseRecord = $this->buildBaseRecord($payload);
+        $mode = $this->normalizeMode($payload['mode'] ?? null);
+        $baseRecord = $this->buildBaseRecord($payload, $mode);
 
-        $validator = Validator::make($payload, [
+        $rules = [
             'type' => 'required|in:task,spike',
-            'email.subject' => 'required|string',
-            'email.from' => 'required|string',
-            'email.body' => 'required|string',
-            'email.threadUrl' => 'required|string',
-        ]);
+            'mode' => 'required|in:email,manual,ai',
+        ];
+
+        if ($mode === 'manual') {
+            $rules['summary'] = 'required|string';
+            $rules['description'] = 'required|string';
+        } elseif ($mode === 'email') {
+            $rules['email.subject'] = 'required|string';
+            $rules['email.body'] = 'required|string';
+            $rules['email.from'] = 'nullable|string';
+            $rules['email.threadUrl'] = 'nullable|string';
+        }
+
+        $validator = Validator::make($payload, $rules);
 
         if ($validator->fails()) {
             $message = $validator->errors()->first();
@@ -34,8 +44,15 @@ class TicketFromEmailController extends Controller
             return response()->json(['error' => $message], 400);
         }
 
+        $normalizedPayload = $this->normalizePayload($payload, $mode ?? 'email');
+        $baseRecord = $this->buildBaseRecord($normalizedPayload, $mode);
+
         try {
-            $aiOutput = $ticketGenerator->fromEmail($payload);
+            if ($mode === 'manual') {
+                $aiOutput = $ticketGenerator->fromManual($payload);
+            } else {
+                $aiOutput = $ticketGenerator->fromEmail($normalizedPayload);
+            }
         } catch (\Throwable $e) {
             $message = $e->getMessage();
             $this->persistRecord($baseRecord, null, null, 'failed', $message);
@@ -64,14 +81,75 @@ class TicketFromEmailController extends Controller
         return response()->json($issue);
     }
 
-    private function buildBaseRecord(array $payload): array
+    private function buildBaseRecord(array $payload, ?string $mode): array
     {
+        $email = $this->extractEmailFields($payload, $mode);
+
         return [
             'request_type' => $payload['type'] ?? null,
-            'email_subject' => data_get($payload, 'email.subject'),
-            'email_from' => data_get($payload, 'email.from'),
-            'email_body' => data_get($payload, 'email.body'),
-            'email_thread_url' => data_get($payload, 'email.threadUrl'),
+            'email_subject' => $email['subject'],
+            'email_from' => $email['from'],
+            'email_body' => $email['body'],
+            'email_thread_url' => $email['threadUrl'],
+        ];
+    }
+
+    private function normalizeMode(?string $mode): ?string
+    {
+        if ($mode === 'ai') {
+            return 'email';
+        }
+
+        if ($mode === 'email' || $mode === 'manual') {
+            return $mode;
+        }
+
+        return null;
+    }
+
+    private function normalizePayload(array $payload, string $mode): array
+    {
+        if ($mode === 'manual') {
+            return [
+                'type' => $payload['type'] ?? null,
+                'email' => [
+                    'subject' => $payload['summary'] ?? null,
+                    'from' => 'manual',
+                    'body' => $payload['description'] ?? null,
+                    'threadUrl' => null,
+                ],
+            ];
+        }
+
+        $email = is_array($payload['email'] ?? null) ? $payload['email'] : [];
+
+        return [
+            'type' => $payload['type'] ?? null,
+            'email' => [
+                'subject' => $email['subject'] ?? null,
+                'from' => $email['from'] ?? null,
+                'body' => $email['body'] ?? null,
+                'threadUrl' => $email['threadUrl'] ?? null,
+            ],
+        ];
+    }
+
+    private function extractEmailFields(array $payload, ?string $mode): array
+    {
+        if ($mode === 'manual') {
+            return [
+                'subject' => $payload['summary'] ?? data_get($payload, 'email.subject'),
+                'from' => data_get($payload, 'email.from') ?? 'manual',
+                'body' => $payload['description'] ?? data_get($payload, 'email.body'),
+                'threadUrl' => data_get($payload, 'email.threadUrl'),
+            ];
+        }
+
+        return [
+            'subject' => data_get($payload, 'email.subject'),
+            'from' => data_get($payload, 'email.from'),
+            'body' => data_get($payload, 'email.body'),
+            'threadUrl' => data_get($payload, 'email.threadUrl'),
         ];
     }
 

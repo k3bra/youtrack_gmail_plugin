@@ -11,7 +11,3 @@ Route::get('/', function () {
 Route::get('/ping', function () {
     return response()->json(['message' => 'pong']);
 });
-
-Route::middleware([ClientKeyMiddleware::class])
-    ->post('/tickets/from-email', TicketFromEmailController::class);
-
