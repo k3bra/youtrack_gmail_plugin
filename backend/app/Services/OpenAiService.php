@@ -11,7 +11,36 @@ class OpenAiService
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
     private const MODEL = 'gpt-4o-mini';
 
+    public function requestJson(string $systemPrompt, string $userPrompt): array
+    {
+        return $this->fetchJson($systemPrompt, $userPrompt);
+    }
+
     public function generateTicket(string $systemPrompt, string $userPrompt): array
+    {
+        $parsed = $this->fetchJson($systemPrompt, $userPrompt);
+
+        $description = $parsed['description'] ?? null;
+        if (!is_string($description) || trim($description) === '') {
+            $fallback = $this->extractBodyFromPrompt($userPrompt);
+            if ($fallback === '') {
+                $fallback = 'Description could not be generated automatically.';
+            }
+            $description = $fallback;
+        }
+
+        if (is_string($description)) {
+            $parsed['description'] = $this->ensureDescriptionSections(
+                $description,
+                (string) ($parsed['summary'] ?? ''),
+                $userPrompt
+            );
+        }
+
+        return $parsed;
+    }
+
+    private function fetchJson(string $systemPrompt, string $userPrompt): array
     {
         $apiKey = env('OPENAI_API_KEY') ?: config('tickets.openai_key');
 
@@ -54,23 +83,6 @@ class OpenAiService
 
         if (!is_array($parsed)) {
             throw new RuntimeException('OpenAI returned non-object JSON.');
-        }
-
-        $description = $parsed['description'] ?? null;
-        if (!is_string($description) || trim($description) === '') {
-            $fallback = $this->extractBodyFromPrompt($userPrompt);
-            if ($fallback === '') {
-                $fallback = 'Description could not be generated automatically.';
-            }
-            $description = $fallback;
-        }
-
-        if (is_string($description)) {
-            $parsed['description'] = $this->ensureDescriptionSections(
-                $description,
-                (string) ($parsed['summary'] ?? ''),
-                $userPrompt
-            );
         }
 
         return $parsed;

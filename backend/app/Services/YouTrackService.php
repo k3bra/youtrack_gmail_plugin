@@ -8,6 +8,50 @@ use RuntimeException;
 
 class YouTrackService
 {
+    public function fetchIssueStatus(string $issueId): string
+    {
+        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
+        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
+
+        if (!is_string($baseUrl) || $baseUrl === '') {
+            throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
+        }
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('YOUTRACK_TOKEN is not set.');
+        }
+
+        $endpoint = rtrim($baseUrl, '/') . '/api/issues/' . $issueId;
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get($endpoint, [
+                'fields' => 'idReadable,customFields(name,value(name))',
+            ]);
+
+        if (!$response->successful()) {
+            throw new RuntimeException('YouTrack API error: ' . $response->body());
+        }
+
+        $body = $response->json();
+        if (!is_array($body)) {
+            throw new RuntimeException('YouTrack response was not valid JSON.');
+        }
+
+        $customFields = $body['customFields'] ?? [];
+        if (is_array($customFields)) {
+            foreach ($customFields as $field) {
+                $name = $field['name'] ?? null;
+                if ($name === 'State' || $name === 'Status') {
+                    $valueName = $field['value']['name'] ?? null;
+                    if (is_string($valueName) && $valueName !== '') {
+                        return $valueName;
+                    }
+                }
+            }
+        }
+
+        return 'Unknown';
+    }
+
     public function createIssue(string $type, string $summary, string $description, array $labels): array
     {
         $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
