@@ -8,7 +8,7 @@ use RuntimeException;
 
 class YouTrackService
 {
-    public function fetchIssueStatus(string $issueId): string
+    public function fetchIssueStatus(string $issueId): ?string
     {
         $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
         $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
@@ -26,6 +26,10 @@ class YouTrackService
             ->get($endpoint, [
                 'fields' => 'idReadable,customFields(name,value(name))',
             ]);
+
+        if ($response->status() === 404 || $response->status() === 410) {
+            return null;
+        }
 
         if (!$response->successful()) {
             throw new RuntimeException('YouTrack API error: ' . $response->body());

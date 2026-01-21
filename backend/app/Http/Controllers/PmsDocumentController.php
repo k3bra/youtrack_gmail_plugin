@@ -155,7 +155,12 @@ class PmsDocumentController extends Controller
         if ($refresh && $tickets->isNotEmpty()) {
             foreach ($tickets as $ticket) {
                 try {
-                    $ticket->issue_status = $youTrackService->fetchIssueStatus($ticket->issue_id);
+                    $status = $youTrackService->fetchIssueStatus($ticket->issue_id);
+                    if ($status === null) {
+                        $ticket->delete();
+                        continue;
+                    }
+                    $ticket->issue_status = $status;
                     $ticket->save();
                 } catch (\Throwable $e) {
                     continue;
@@ -163,8 +168,10 @@ class PmsDocumentController extends Controller
             }
         }
 
+        $freshTickets = $pmsDocument->tickets()->orderByDesc('created_at')->get();
+
         return response()->json(
-            $tickets->map(static function (PmsDocumentTicket $ticket): array {
+            $freshTickets->map(static function (PmsDocumentTicket $ticket): array {
                 return [
                     'id' => $ticket->id,
                     'issue_id' => $ticket->issue_id,

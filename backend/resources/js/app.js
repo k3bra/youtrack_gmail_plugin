@@ -145,7 +145,7 @@ Alpine.data('pmsDocuments', () => ({
         if (match) {
             const documentId = Number(match[1]);
             if (!Number.isNaN(documentId)) {
-                this.loadHistoryItem(documentId);
+                this.loadHistoryItem(documentId, true);
             }
         }
     },
@@ -295,7 +295,7 @@ Alpine.data('pmsDocuments', () => ({
         this.loadHistory();
     },
 
-    async loadHistoryItem(documentId) {
+    async loadHistoryItem(documentId, refreshTickets = false) {
         this.errorMessage = '';
         this.clearExample();
         this.clearTicket();
@@ -311,7 +311,7 @@ Alpine.data('pmsDocuments', () => ({
             this.documentId = data.id;
             this.currentFilename = data.original_filename || '';
             this.analysis = data.analysis_result;
-            this.loadTickets();
+            this.loadTickets(refreshTickets);
             this.updateUrl(this.documentId);
         } catch (error) {
             this.errorMessage = this.resolveError(error);

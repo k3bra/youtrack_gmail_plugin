@@ -11,12 +11,12 @@
             <header class="border-b border-border bg-card">
                 <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 sm:px-8 sm:py-4 lg:px-12">
                     <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-2">
+                        <a href="/pms-documents" class="inline-flex items-center gap-2">
                             <span class="text-base font-semibold text-text">DocSnitch</span>
                             <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent bg-accent-soft/70 text-accent/80">
                                 AI
                             </span>
-                        </div>
+                        </a>
                     </div>
                     <div class="hidden md:block">
                         <span class="rounded-full border border-border bg-page px-3 py-1 text-[10px] font-semibold text-text-muted">
@@ -114,7 +114,7 @@
                                             </div>
                                             <button
                                                 class="rounded-full border border-border px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
-                                                @click="loadHistoryItem(entry.id)"
+                                                @click="loadHistoryItem(entry.id, true)"
                                             >
                                                 View
                                             </button>
