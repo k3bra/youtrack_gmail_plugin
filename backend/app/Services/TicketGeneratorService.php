@@ -13,15 +13,31 @@ class TicketGeneratorService
 
     private const SPIKE_PROMPT = 'Create a SPIKE ticket from the email.'
         . ' Summary format: [Spike][Integration] Short question.'
-        . ' Description MUST include sections: Context, Questions to Answer, Unknowns, References.'
+        . ' Description MUST include sections in this exact order: Context, Goals, Reservation Status Mapping, Field Mapping,'
+        . ' Questions to Answer, Unknowns, References.'
+        . ' Goals MUST mention PMS integration and Campaign Manager compatibility.'
+        . ' If PMS supports webhooks, Goals MUST mention webhook support and Campaign Manager events; if not, do not mention'
+        . ' webhooks or events.'
+        . ' Reservation Status Mapping MUST list only statuses found in the documentation and state if mapping is partial or complete.'
+        . ' Field Mapping MUST list available required fields and explicitly mention missing fields, based only on the documentation.'
+        . ' References MUST mention the uploaded PMS API documentation PDF (e.g., "Based on the PMS API documentation provided (PDF)").'
         . ' Rules: Focus on questions. Do NOT propose solutions. No acceptance criteria.'
+        . ' Do NOT assume webhook support. Do NOT invent statuses or fields. Do NOT generalize goals.'
         . ' Output must be valid JSON with keys: summary, description, labels.'
         . ' No markdown or additional text.';
 
     private const TASK_PROMPT = 'Create a TASK ticket from the email.'
         . ' Summary format: [Task][Integration] Clear action.'
-        . ' Description MUST include sections: Context, Expected Behavior, Acceptance Criteria, References.'
+        . ' Description MUST include sections in this exact order: Context, Goals, Reservation Status Mapping, Field Mapping,'
+        . ' Expected Behavior, Acceptance Criteria, References.'
+        . ' Goals MUST mention PMS integration and Campaign Manager compatibility.'
+        . ' If PMS supports webhooks, Goals MUST mention webhook support and Campaign Manager events; if not, do not mention'
+        . ' webhooks or events.'
+        . ' Reservation Status Mapping MUST list only statuses found in the documentation and state if mapping is partial or complete.'
+        . ' Field Mapping MUST list available required fields and explicitly mention missing fields, based only on the documentation.'
+        . ' References MUST mention the uploaded PMS API documentation PDF (e.g., "Based on the PMS API documentation provided (PDF)").'
         . ' Rules: Must be implementable. No open questions.'
+        . ' Do NOT assume webhook support. Do NOT invent statuses or fields. Do NOT generalize goals.'
         . ' Output must be valid JSON with keys: summary, description, labels.'
         . ' No markdown or additional text.';
 

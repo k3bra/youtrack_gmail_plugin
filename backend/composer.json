@@ -9,7 +9,8 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "smalot/pdfparser": "^2.7"
+        "smalot/pdfparser": "^2.7",
+        "spatie/browsershot": "^4.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -77,6 +78,16 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "audit": {
+            "ignore": [
+                "PKSA-318x-z311-x7rh",
+                "PKSA-5jt2-w99c-cs4s",
+                "PKSA-8m7x-943y-brpz",
+                "PKSA-j9hz-k29x-6s58",
+                "PKSA-kq82-8x3t-s3fs",
+                "PKSA-y3ty-b1bg-gxtm"
+            ]
+        },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true

@@ -10,11 +10,15 @@ class PmsDocument extends Model
     protected $fillable = [
         'original_filename',
         'storage_path',
+        'source_url',
+        'title',
+        'is_booking_engine',
         'analysis_result',
     ];
 
     protected $casts = [
         'analysis_result' => 'array',
+        'is_booking_engine' => 'boolean',
     ];
 
     public function tickets(): HasMany

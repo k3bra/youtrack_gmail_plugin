@@ -4,6 +4,9 @@ window.Alpine = Alpine;
 
 Alpine.data('pmsDocuments', () => ({
     file: null,
+    documentUrl: '',
+    documentTitle: '',
+    isBookingEngine: false,
     documentId: null,
     analysis: null,
     currentFilename: '',
@@ -26,6 +29,17 @@ Alpine.data('pmsDocuments', () => ({
     isCreatingTicket: false,
     isTicketModalOpen: false,
     ticketDraft: '',
+    isIssueModalOpen: false,
+    issueModalId: '',
+    issueModal: null,
+    issueModalError: '',
+    issueModalSuccess: '',
+    issueBodyDraft: '',
+    isLoadingIssue: false,
+    isUpdatingIssue: false,
+    titleError: '',
+    titleSuccess: '',
+    isSavingTitle: false,
     errorMessage: '',
     isUploading: false,
     isAnalyzing: false,
@@ -40,9 +54,19 @@ Alpine.data('pmsDocuments', () => ({
         { key: 'email', label: 'Email' },
         { key: 'reservation_status', label: 'Reservation status' },
     ],
+    availabilityDefinitions: [
+        { key: 'room_name', label: 'Room name' },
+        { key: 'room_image', label: 'Room image' },
+        { key: 'price', label: 'Price' },
+        { key: 'currency', label: 'Currency' },
+    ],
 
     get fileName() {
-        return this.file?.name || this.currentFilename || '';
+        return this.documentUrl?.trim() || this.file?.name || this.currentFilename || '';
+    },
+
+    get defaultTitle() {
+        return this.fileName || 'PMS document';
     },
 
     get analyzeButtonLabel() {
@@ -93,6 +117,26 @@ Alpine.data('pmsDocuments', () => ({
         });
     },
 
+    get availabilityRows() {
+        if (!this.analysis) {
+            return [];
+        }
+
+        const availability = this.analysis.availability_fields || {};
+
+        return this.availabilityDefinitions.map((field) => {
+            const entry = availability[field.key] || {};
+            const available = Boolean(entry.available);
+            const sourceLabel = entry.source_label || null;
+            return {
+                key: field.key,
+                label: field.label,
+                available,
+                sourceLabel,
+            };
+        });
+    },
+
     get formattedExamplePayload() {
         const payload = this.examplePayload;
         const format = this.exampleFormat;
@@ -137,6 +181,55 @@ Alpine.data('pmsDocuments', () => ({
         return this.renderMarkdown(this.ticketDraft || '');
     },
 
+    get issueFieldRows() {
+        if (!this.issueModal) {
+            return [];
+        }
+
+        const rows = [];
+        const project = this.issueModal.project || {};
+        const projectLabel = project.name && project.key
+            ? `${project.name} (${project.key})`
+            : (project.name || project.key || null);
+
+        if (projectLabel) {
+            rows.push({ label: 'Project', value: projectLabel });
+        }
+
+        const desiredOrder = [
+            'Type',
+            'State',
+            'Priority',
+            'Team(s)',
+            'Epic Name',
+            'Main topic',
+            'Sprint(s)',
+        ];
+
+        const fields = this.issueModal.fields || {};
+        const used = new Set();
+
+        desiredOrder.forEach((key) => {
+            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+                rows.push({ label: key, value: this.formatIssueFieldValue(fields[key]) });
+                used.add(key);
+            }
+        });
+
+        Object.keys(fields)
+            .filter((key) => !used.has(key))
+            .sort()
+            .forEach((key) => {
+                const value = fields[key];
+                if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
+                    return;
+                }
+                rows.push({ label: key, value: this.formatIssueFieldValue(value) });
+            });
+
+        return rows;
+    },
+
     initPage() {
         this.loadHistory();
 
@@ -162,6 +255,8 @@ Alpine.data('pmsDocuments', () => ({
         const selected = event.target.files?.[0] ?? null;
         if (selected) {
             this.file = selected;
+            this.documentUrl = '';
+            this.documentTitle = '';
             this.documentId = null;
             this.analysis = null;
             this.currentFilename = selected.name;
@@ -176,6 +271,8 @@ Alpine.data('pmsDocuments', () => ({
         const dropped = event.dataTransfer?.files?.[0] ?? null;
         if (dropped) {
             this.file = dropped;
+            this.documentUrl = '';
+            this.documentTitle = '';
             this.documentId = null;
             this.analysis = null;
             this.currentFilename = dropped.name;
@@ -188,11 +285,39 @@ Alpine.data('pmsDocuments', () => ({
         }
     },
 
+    handleUrlInput() {
+        const trimmed = this.documentUrl.trim();
+        if (trimmed === '') {
+            if (!this.file) {
+                this.currentFilename = '';
+            }
+            return;
+        }
+
+        this.documentUrl = trimmed;
+        this.file = null;
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+        this.documentTitle = '';
+        this.documentId = null;
+        this.analysis = null;
+        this.currentFilename = trimmed;
+        this.clearExample();
+        this.clearTicket();
+        this.errorMessage = '';
+    },
+
     async requestJson(url, options = {}) {
         const headers = {
             Accept: 'application/json',
             ...(options.headers || {}),
         };
+
+        const clientKey = this.readClientKey();
+        if (clientKey) {
+            headers['X-Client-Key'] = clientKey;
+        }
 
         const response = await fetch(url, { ...options, headers });
         let data = null;
@@ -211,13 +336,27 @@ Alpine.data('pmsDocuments', () => ({
         return data;
     },
 
+    readClientKey() {
+        const meta = document.querySelector('meta[name="client-key"]');
+        return meta?.getAttribute('content') || '';
+    },
+
     async uploadDocument() {
-        if (!this.file) {
-            throw new Error('Please select a PDF to upload.');
+        if (!this.file && !this.documentUrl.trim()) {
+            throw new Error('Please select a PDF or enter a URL.');
         }
 
         const formData = new FormData();
-        formData.append('document', this.file);
+        if (this.file) {
+            formData.append('document', this.file);
+        }
+        if (this.documentUrl.trim()) {
+            formData.append('document_url', this.documentUrl.trim());
+        }
+        if (this.documentTitle.trim()) {
+            formData.append('title', this.documentTitle.trim());
+        }
+        formData.append('is_booking_engine', this.isBookingEngine ? '1' : '0');
 
         const data = await this.requestJson('/api/pms-documents', {
             method: 'POST',
@@ -235,6 +374,8 @@ Alpine.data('pmsDocuments', () => ({
         this.errorMessage = '';
         this.clearExample();
         this.clearTicket();
+        this.titleError = '';
+        this.titleSuccess = '';
 
         try {
             if (!this.documentId) {
@@ -260,7 +401,13 @@ Alpine.data('pmsDocuments', () => ({
                 method: 'POST',
             });
             this.analysis = data;
-            this.currentFilename = this.file?.name || this.currentFilename;
+            this.currentFilename = this.documentUrl?.trim() || this.file?.name || this.currentFilename;
+            if (!this.documentTitle.trim()) {
+                const fallbackTitle = this.currentFilename || this.file?.name || this.documentUrl.trim();
+                if (fallbackTitle) {
+                    this.documentTitle = fallbackTitle;
+                }
+            }
             this.loadHistory();
             this.loadTickets();
             this.updateUrl(this.documentId);
@@ -299,8 +446,12 @@ Alpine.data('pmsDocuments', () => ({
         this.errorMessage = '';
         this.clearExample();
         this.clearTicket();
+        this.titleError = '';
+        this.titleSuccess = '';
         this.analysis = null;
         this.tickets = [];
+        this.documentUrl = '';
+        this.documentTitle = '';
 
         try {
             const data = await this.requestJson(`/api/pms-documents/${documentId}`);
@@ -309,7 +460,9 @@ Alpine.data('pmsDocuments', () => ({
                 return;
             }
             this.documentId = data.id;
-            this.currentFilename = data.original_filename || '';
+            this.currentFilename = data.source_url || data.original_filename || '';
+            this.documentTitle = data.title || data.source_url || data.original_filename || '';
+            this.isBookingEngine = Boolean(data.is_booking_engine);
             this.analysis = data.analysis_result;
             this.loadTickets(refreshTickets);
             this.updateUrl(this.documentId);
@@ -349,6 +502,52 @@ Alpine.data('pmsDocuments', () => ({
         }
     },
 
+    async saveTitle() {
+        this.titleError = '';
+        this.titleSuccess = '';
+
+        if (!this.documentId) {
+            this.titleError = 'Select a document before saving the title.';
+            return;
+        }
+
+        const titleValue = this.documentTitle.trim();
+        this.isSavingTitle = true;
+
+        try {
+            const data = await this.requestJson(`/api/pms-documents/${this.documentId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: titleValue === '' ? null : titleValue,
+                }),
+            });
+
+            if (data && Object.prototype.hasOwnProperty.call(data, 'title')) {
+                const nextTitle = data.title || '';
+                this.documentTitle = nextTitle !== '' ? nextTitle : this.defaultTitle;
+            }
+
+            this.history = this.history.map((entry) => {
+                if (entry.id !== this.documentId) {
+                    return entry;
+                }
+                return {
+                    ...entry,
+                    title: data?.title ?? null,
+                };
+            });
+
+            this.titleSuccess = 'Title updated.';
+        } catch (error) {
+            this.titleError = this.resolveError(error);
+        } finally {
+            this.isSavingTitle = false;
+        }
+    },
+
     formatTicketMeta(ticket) {
         if (!ticket?.created_at) {
             return '';
@@ -358,6 +557,20 @@ Alpine.data('pmsDocuments', () => ({
             return ticket.created_at;
         }
         return date.toLocaleString();
+    },
+
+    formatHistoryTitle(entry) {
+        if (!entry) {
+            return '';
+        }
+        return entry.title || entry.original_filename || entry.source_url || '';
+    },
+
+    formatIssueFieldValue(value) {
+        if (Array.isArray(value)) {
+            return value.join(', ');
+        }
+        return String(value);
     },
 
     async fetchExample() {
@@ -469,18 +682,209 @@ Alpine.data('pmsDocuments', () => ({
         this.isTicketModalOpen = false;
     },
 
+    applyTicketMarkdown(action) {
+        const textarea = this.$refs.ticketDraftInput;
+        if (!textarea) {
+            return;
+        }
+
+        this.applyMarkdownAction(action, textarea, 'ticketDraft');
+    },
+
+    applyMarkdownAction(action, textarea, field) {
+        const value = this[field] ? String(this[field]) : '';
+        const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : value.length;
+        const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : value.length;
+        const selected = value.slice(start, end);
+
+        const insertText = (replacement, selectStartOffset, selectEndOffset) => {
+            const nextValue = value.slice(0, start) + replacement + value.slice(end);
+            this[field] = nextValue;
+            textarea.value = nextValue;
+            const nextStart = start + selectStartOffset;
+            const nextEnd = start + selectEndOffset;
+            this.$nextTick(() => {
+                textarea.focus();
+                textarea.selectionStart = nextStart;
+                textarea.selectionEnd = nextEnd;
+            });
+        };
+
+        const wrapSelection = (before, after, placeholder) => {
+            const text = selected || placeholder;
+            insertText(`${before}${text}${after}`, before.length, before.length + text.length);
+        };
+
+        const prefixLines = (prefix, placeholder) => {
+            const text = selected || placeholder;
+            const lines = text.split(/\r?\n/);
+            const prefixed = lines
+                .map((line) => (line === '' ? prefix : `${prefix}${line}`))
+                .join('\n');
+            insertText(prefixed, 0, prefixed.length);
+        };
+
+        const insertBlock = (fence, placeholder) => {
+            const text = selected || placeholder;
+            const block = `${fence}\n${text}\n${fence}`;
+            insertText(block, fence.length + 1, fence.length + 1 + text.length);
+        };
+
+        switch (action) {
+            case 'bold':
+                wrapSelection('**', '**', 'bold text');
+                break;
+            case 'italic':
+                wrapSelection('*', '*', 'italic text');
+                break;
+            case 'heading':
+                prefixLines('## ', 'Heading');
+                break;
+            case 'list':
+                prefixLines('- ', 'List item');
+                break;
+            case 'code':
+                insertBlock('```', 'code');
+                break;
+            default:
+                break;
+        }
+    },
+
+    openIssueModal(issueId) {
+        if (!issueId) {
+            return;
+        }
+
+        this.issueModalId = issueId;
+        this.issueModal = null;
+        this.issueModalError = '';
+        this.issueModalSuccess = '';
+        this.issueBodyDraft = '';
+        this.isIssueModalOpen = true;
+        this.fetchIssueModal();
+    },
+
+    closeIssueModal() {
+        this.isIssueModalOpen = false;
+        this.issueModalError = '';
+        this.issueModalSuccess = '';
+        this.issueModalId = '';
+        this.issueModal = null;
+        this.issueBodyDraft = '';
+        this.isLoadingIssue = false;
+        this.isUpdatingIssue = false;
+    },
+
+    async fetchIssueModal() {
+        if (!this.issueModalId) {
+            return;
+        }
+
+        this.isLoadingIssue = true;
+        this.issueModalError = '';
+        this.issueModalSuccess = '';
+
+        try {
+            const data = await this.requestJson(`/api/youtrack/issues/${this.issueModalId}`);
+            this.issueModal = data;
+            this.issueBodyDraft = data?.description ? String(data.description) : '';
+        } catch (error) {
+            this.issueModalError = this.resolveError(error);
+        } finally {
+            this.isLoadingIssue = false;
+        }
+    },
+
+    async updateIssueBody() {
+        this.issueModalError = '';
+        this.issueModalSuccess = '';
+
+        if (!this.issueModalId) {
+            this.issueModalError = 'Select a ticket before updating.';
+            return;
+        }
+
+        if (!this.issueBodyDraft.trim()) {
+            this.issueModalError = 'Ticket body cannot be empty.';
+            return;
+        }
+
+        this.isUpdatingIssue = true;
+
+        try {
+            await this.requestJson(`/api/youtrack/issues/${this.issueModalId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    description: this.issueBodyDraft,
+                }),
+            });
+            if (this.issueModal) {
+                this.issueModal.description = this.issueBodyDraft;
+            }
+            this.issueModalSuccess = 'Ticket updated.';
+        } catch (error) {
+            this.issueModalError = this.resolveError(error);
+        } finally {
+            this.isUpdatingIssue = false;
+        }
+    },
+
     buildSpikeDraft() {
         const fileName = this.currentFilename || 'PMS document';
+        const title = this.documentTitle.trim();
         const link = this.documentId
             ? `${window.location.origin}/pms-documents/${this.documentId}/download`
             : '';
+        const endpointAvailable = this.analysis?.has_get_reservations_endpoint ? 'Yes' : 'No';
+        const endpointValue = this.analysis?.get_reservations_endpoint || 'Not documented';
 
         const lines = [
             'Context:',
             `Integrate with the following PMS: ${fileName}.`,
+            title ? `Document title: ${title}.` : null,
             '',
             'Goal:',
             'Fetch campaigns and be able to send campaigns.',
+            '',
+            'Reservation Endpoint:',
+            `GET reservations documented: ${endpointAvailable}.`,
+            `Endpoint: ${endpointValue}.`,
+            '',
+            'Field Mapping:',
+        ];
+
+        const fields = this.analysis?.fields || {};
+        this.fieldDefinitions.forEach((field) => {
+            const entry = fields[field.key];
+            if (!entry) {
+                return;
+            }
+            if (field.key === 'reservation_status') {
+                const available = entry.available ? 'Yes' : 'No';
+                let line = `- ${field.label}: ${available}`;
+                if (entry.source_label) {
+                    line += ` (source: ${entry.source_label})`;
+                }
+                lines.push(line);
+                if (Array.isArray(entry.values) && entry.values.length) {
+                    lines.push(`  Values: ${entry.values.join(', ')}`);
+                }
+                return;
+            }
+
+            const available = entry.available ? 'Yes' : 'No';
+            let line = `- ${field.label}: ${available}`;
+            if (entry.source_label) {
+                line += ` (source: ${entry.source_label})`;
+            }
+            lines.push(line);
+        });
+
+        lines.push(
             '',
             'Scope:',
             '- Review documented endpoints and required fields for integration readiness.',
@@ -498,9 +902,9 @@ Alpine.data('pmsDocuments', () => ({
             '',
             'Documentation:',
             link ? `- [${fileName}](${link})` : `- ${fileName}`,
-        ];
+        );
 
-        return lines.join('\n');
+        return lines.filter((line) => line !== null).join('\n');
     },
 
     renderMarkdown(source) {
@@ -768,6 +1172,9 @@ Alpine.data('pmsDocuments', () => ({
 
     reset() {
         this.file = null;
+        this.documentUrl = '';
+        this.documentTitle = '';
+        this.isBookingEngine = false;
         this.documentId = null;
         this.analysis = null;
         this.currentFilename = '';
@@ -775,6 +1182,9 @@ Alpine.data('pmsDocuments', () => ({
         this.clearExample();
         this.clearTicket();
         this.errorMessage = '';
+        this.titleError = '';
+        this.titleSuccess = '';
+        this.isSavingTitle = false;
         this.isUploading = false;
         this.isAnalyzing = false;
         this.isDragging = false;
@@ -782,6 +1192,132 @@ Alpine.data('pmsDocuments', () => ({
             this.$refs.fileInput.value = '';
         }
         this.updateUrl(null);
+    },
+}));
+
+Alpine.data('youtrackIssueViewer', () => ({
+    issueId: '',
+    issue: null,
+    isLoading: false,
+    errorMessage: '',
+
+    get fieldRows() {
+        if (!this.issue) {
+            return [];
+        }
+
+        const rows = [];
+        const project = this.issue.project || {};
+        const projectLabel = project.name && project.key
+            ? `${project.name} (${project.key})`
+            : (project.name || project.key || null);
+
+        if (projectLabel) {
+            rows.push({ label: 'Project', value: projectLabel });
+        }
+
+        const desiredOrder = [
+            'Type',
+            'State',
+            'Priority',
+            'Team(s)',
+            'Epic Name',
+            'Main topic',
+            'Sprint(s)',
+        ];
+
+        const fields = this.issue.fields || {};
+        const used = new Set();
+
+        desiredOrder.forEach((key) => {
+            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+                rows.push({ label: key, value: this.formatFieldValue(fields[key]) });
+                used.add(key);
+            }
+        });
+
+        Object.keys(fields)
+            .filter((key) => !used.has(key))
+            .sort()
+            .forEach((key) => {
+                const value = fields[key];
+                if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
+                    return;
+                }
+                rows.push({ label: key, value: this.formatFieldValue(value) });
+            });
+
+        return rows;
+    },
+
+    init(root) {
+        const issueId = root?.dataset?.issueId || '';
+        this.issueId = issueId;
+        if (this.issueId) {
+            this.fetchIssue();
+        }
+    },
+
+    async fetchIssue() {
+        this.isLoading = true;
+        this.errorMessage = '';
+        this.issue = null;
+
+        try {
+            const data = await this.requestJson(`/api/youtrack/issues/${this.issueId}`);
+            this.issue = data;
+        } catch (error) {
+            this.errorMessage = this.resolveError(error);
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async requestJson(url, options = {}) {
+        const headers = {
+            Accept: 'application/json',
+            ...(options.headers || {}),
+        };
+
+        const clientKey = this.readClientKey();
+        if (clientKey) {
+            headers['X-Client-Key'] = clientKey;
+        }
+
+        const response = await fetch(url, { ...options, headers });
+        let data = null;
+
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const message = data?.error || `Request failed (${response.status})`;
+            throw new Error(message);
+        }
+
+        return data;
+    },
+
+    readClientKey() {
+        const meta = document.querySelector('meta[name="client-key"]');
+        return meta?.getAttribute('content') || '';
+    },
+
+    formatFieldValue(value) {
+        if (Array.isArray(value)) {
+            return value.join(', ');
+        }
+        return String(value);
+    },
+
+    resolveError(error) {
+        if (error?.message) {
+            return error.message;
+        }
+        return 'An unexpected error occurred.';
     },
 }));
 

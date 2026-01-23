@@ -56,7 +56,13 @@ class YouTrackService
         return 'Unknown';
     }
 
-    public function createIssue(string $type, string $summary, string $description, array $labels): array
+    public function createIssue(
+        string $type,
+        string $summary,
+        string $description,
+        array $labels,
+        array $customFields = []
+    ): array
     {
         $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
         $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
@@ -74,31 +80,6 @@ class YouTrackService
 
         $issueType = strtolower($type) === 'spike' ? 'Spike' : 'Task';
 
-        $customFields = [
-            [
-                'name' => 'Type',
-                'value' => ['name' => $issueType], // Task | Spike
-            ],
-            [
-                'name' => 'State',
-                'value' => ['name' => 'Draft'],
-            ],
-            [
-                'name' => 'Team(s)',
-                'value' => [
-                    ['name' => 'BE'],
-                ],
-            ],
-            [
-                'name' => 'Epic Name',
-                'value' => ['name' => 'Integrations'],
-            ],
-            [
-                'name' => 'Main topic',
-                'value' => ['name' => 'Chatbot'],
-            ],
-        ];
-
         $payload = [
             'project' => ['shortName' => $projectId],
             'summary' => $summary,
@@ -110,8 +91,8 @@ class YouTrackService
             ),
         ];
 
-        if ($customFields) {
-            //$payload['customFields'] = $customFields;
+        if ($customFields !== []) {
+            $payload['customFields'] = $customFields;
         }
 
         Log::info('Creating YouTrack issue', $payload);
@@ -140,5 +121,33 @@ class YouTrackService
             'issueId' => $issueId,
             'url' => $url,
         ];
+    }
+
+    public function updateIssueDescription(string $issueId, string $description): void
+    {
+        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
+        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
+
+        if (!is_string($baseUrl) || $baseUrl === '') {
+            throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
+        }
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('YOUTRACK_TOKEN is not set.');
+        }
+
+        $endpoint = rtrim($baseUrl, '/') . '/api/issues/' . $issueId;
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->post($endpoint, [
+                'description' => $description,
+            ]);
+
+        if ($response->status() === 404 || $response->status() === 410) {
+            throw new RuntimeException('YouTrack issue not found.');
+        }
+
+        if (!$response->successful()) {
+            throw new RuntimeException('YouTrack API error: ' . $response->body());
+        }
     }
 }

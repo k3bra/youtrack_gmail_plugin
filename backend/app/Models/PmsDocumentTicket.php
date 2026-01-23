@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PmsDocumentTicket extends Model
 {
@@ -13,4 +14,9 @@ class PmsDocumentTicket extends Model
         'issue_status',
         'issue_type',
     ];
+
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(PmsDocument::class, 'pms_document_id');
+    }
 }
