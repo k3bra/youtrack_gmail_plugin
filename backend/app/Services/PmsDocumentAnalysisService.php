@@ -6,139 +6,6 @@ use InvalidArgumentException;
 
 class PmsDocumentAnalysisService
 {
-    private const SYSTEM_PROMPT = 'You analyze PMS API documentation.'
-        . ' Analyze only the provided text.'
-        . ' Do not invent features that are not supported by the text.'
-        . ' Use reasonable inference from labels, examples, and common abbreviations to map fields.'
-        . ' If information is missing entirely, mark it as false.'
-        . ' Output must be valid JSON and nothing else.';
-
-    private const USER_PROMPT_INTRO = 'Review the documentation and return JSON matching this schema exactly:'
-        . ' {'
-        . '"has_get_reservations_endpoint": boolean,'
-        . '"get_reservations_endpoint": string | null,'
-        . '"has_get_availability_endpoint": boolean,'
-        . '"get_availability_endpoint": string | null,'
-        . '"supports_webhooks": boolean,'
-        . '"webhook_details": string | null,'
-        . '"fields": {'
-        . '"check_in_date": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"checkout_date": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"first_name": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"last_name": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"reservation_id": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"mobile_phone": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"email": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"reservation_status": {'
-        . '"available": boolean,'
-        . '"source_label": string | null,'
-        . '"values": string[]'
-        . '}'
-        . '},'
-        . '"availability_fields": {'
-        . '"room_name": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"room_image": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"price": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '},'
-        . '"currency": {'
-        . '"available": boolean,'
-        . '"source_label": string | null'
-        . '}'
-        . '},'
-        . '"optional_fields": string[],'
-        . '"notes": string[]'
-        . ' }'
-        . ' Rules:'
-        . ' - If a GET reservations endpoint is not explicitly documented, set has_get_reservations_endpoint to false.'
-        . ' - Booking engine mode will be provided; when booking engine mode is false, set has_get_availability_endpoint'
-        . ' to false, get_availability_endpoint to null, and all availability_fields.available to false.'
-        . ' - If a GET availability endpoint is not explicitly documented, set has_get_availability_endpoint to false.'
-        . ' - If any field is not documented or inferable from labels/examples, set available to false and source_label to null.'
-        . ' - If reservation status values are not listed, set values to [].'
-        . ' - If has_get_reservations_endpoint is false, set get_reservations_endpoint to null.'
-        . ' - If has_get_availability_endpoint is false, set get_availability_endpoint to null.'
-        . ' - If supports_webhooks is false, set webhook_details to null.'
-        . ' - If available is false, source_label must be null.'
-        . ' - If a field appears as a key in a response example payload, treat that as documented and use the key as source_label.'
-        . ' - Match labels case-insensitively and ignore separators like spaces, underscores, and hyphens.'
-        . ' - Ignore leading or trailing punctuation/symbols such as "@", "#", "*", "-", "•", ":", and "." when matching labels.'
-        . ' - Labels may appear with a prefix symbol (e.g., "@telefono"). Match them without the symbol, but keep the exact original'
-        . ' label (including the prefix) in source_label.'
-        . ' - optional_fields must list any other reservation fields documented (in response examples, field tables, or'
-        . ' parameter lists) that are not part of the required fields list; use the exact labels or keys as shown.'
-        . ' - Include common reservation metadata fields when documented, such as "modified_date_time", "create_date_time",'
-        . ' "currency", "room_type_id", "room_type_name", "room_id", or "room_name" (use the exact label from the document).'
-        . ' - If the response example contains keys not in the required fields list, include those keys in optional_fields.'
-        . ' - Do not include required fields or reservation status in optional_fields.'
-        . ' - If no additional reservation fields are documented, set optional_fields to [].'
-        . ' - If a label is not in the explicit list but clearly refers to the same concept (abbreviation,'
-        . ' language variant, or common shorthand), map it to the closest field and use the exact label as source_label.'
-        . ' - When a label is ambiguous but reasonably likely to match, prefer mapping it rather than leaving it unavailable.'
-        . ' - Identify labels in any language. Map common variants:'
-        . ' first_name can be labeled "first name", "name", "name1", "apelido1", or "nombre";'
-        . ' last_name can be labeled "last name", "name2", "apelido2", "apellido", or "surname";'
-        . ' mobile_phone can be labeled "phone", "telephone", "tel", "telefono", "teléfono", "movil", "móvil", or "celular";'
-        . ' check_in_date can be labeled "check-in", "check in", "checkin", "check in date", "check-in date",'
-        . ' "check_in", "check_in_date", "checkindate", "arrival", "arrival date", or "fecha de entrada";'
-        . ' checkout_date can be labeled "check-out", "check out", "checkout", "check out date", "check-out date",'
-        . ' "check_out", "check_out_date", "checkoutdate", "departure", "departure date", or "fecha de salida";'
-        . ' reservation_id can be labeled "reservation id", "reservation number", "booking id", "booking number",'
-        . ' "id de reserva", or "numero de reserva";'
-        . ' email can be labeled "email", "e-mail", "correo", "correo electronico", "correo electrónico", or "mail";'
-        . ' reservation_status can be labeled "status", "reservation status", "reservation_status", "state", "estado", or "situacao";'
-        . ' room_name can be labeled "room name", "room_name", "room", "room description", "description", "room_type_name",'
-        . ' or "room type";'
-        . ' room_image can be labeled "room image", "room_image", "image", "image_url", "photo", or "room_photo";'
-        . ' price can be labeled "price", "rate", "amount", "room_price", "price_per_night", or "total_price";'
-        . ' currency can be labeled "currency", "currency_code", "currency_iso", or "iso_currency";'
-        . ' - For source_label, return the exact label text from the documentation.'
-        . ' Respond with JSON only.';
-
-    private const EXAMPLE_PROMPT_INTRO = 'Review the documentation and return JSON matching this schema exactly:'
-        . ' {'
-        . '"get_reservations_example": {'
-        . '"format": string | null,'
-        . '"payload": string | null'
-        . '}'
-        . ' }'
-        . ' Rules:'
-        . ' - If a GET reservations response example is documented, include a successful response example in get_reservations_example.'
-        . ' - If multiple examples are documented, prefer the success response and ignore error examples.'
-        . ' - get_reservations_example.format must be a lowercase format label when payload is provided.'
-        . ' - Use "json" or "xml" when the example is clearly JSON or XML; otherwise use the documented format name (e.g., "yaml", "text").'
-        . ' - If no example is documented, set get_reservations_example.format and payload to null.'
-        . ' - Return the payload exactly as shown (no edits) when possible.'
-        . ' Respond with JSON only.';
-
     public function __construct(private OpenAiService $openAiService)
     {
     }
@@ -149,28 +16,46 @@ class PmsDocumentAnalysisService
             throw new InvalidArgumentException('Document text is empty.');
         }
 
-        $modeLine = $isBookingEngine ? 'Booking engine mode: true.' : 'Booking engine mode: false.';
-        $userPrompt = self::USER_PROMPT_INTRO . "\n\n" . $modeLine . "\n\nDocumentation Text:\n" . $text;
+        if ($isBookingEngine) {
+            $userPrompt = $this->getPrompt('booking_engine_prompt') . "\n\nDocumentation Text:\n" . $text;
+            $output = $this->openAiService->requestJson($this->getPrompt('system_prompt'), $userPrompt);
 
-        $output = $this->openAiService->requestJson(self::SYSTEM_PROMPT, $userPrompt);
+            \Log::info('OpenAI output: ' . json_encode($output));
+            $this->validateBookingEngineOutput($output);
+            $this->normalizeOptionalFields($output, $this->getAvailabilityFieldLabels($output['availability_fields'] ?? []));
+
+            return $output;
+        }
+
+        $userPrompt = $this->getPrompt('pms_prompt') . "\n\nDocumentation Text:\n" . $text;
+
+        $output = $this->openAiService->requestJson($this->getPrompt('system_prompt'), $userPrompt);
 
         \Log::info('OpenAI output: ' . json_encode($output));
-        $this->validateOutput($output);
-        $this->normalizeOptionalFields($output);
-        $this->normalizeBookingEngineOutput($output, $isBookingEngine);
+        $this->validatePmsOutput($output);
+        $this->normalizeOptionalFields($output, $this->getRequiredFieldLabels($output['fields'] ?? []));
 
         return $output;
     }
 
-    public function analyzeExample(string $text): array
+    public function analyzeExample(string $text, bool $isBookingEngine = false): array
     {
         if (trim($text) === '') {
             throw new InvalidArgumentException('Document text is empty.');
         }
 
-        $userPrompt = self::EXAMPLE_PROMPT_INTRO . "\n\nDocumentation Text:\n" . $text;
+        if ($isBookingEngine) {
+            return [
+                'get_reservations_example' => [
+                    'format' => null,
+                    'payload' => null,
+                ],
+            ];
+        }
 
-        $output = $this->openAiService->requestJson(self::SYSTEM_PROMPT, $userPrompt);
+        $userPrompt = $this->getPrompt('example_prompt') . "\n\nDocumentation Text:\n" . $text;
+
+        $output = $this->openAiService->requestJson($this->getPrompt('system_prompt'), $userPrompt);
 
         \Log::info('OpenAI example output: ' . json_encode($output));
         $this->validateExampleOutput($output);
@@ -178,36 +63,27 @@ class PmsDocumentAnalysisService
         return $output;
     }
 
-    private function validateOutput(array $output): void
+    private function validatePmsOutput(array $output): void
     {
         $this->assertExactKeys($output, [
             'has_get_reservations_endpoint',
             'get_reservations_endpoint',
-            'has_get_availability_endpoint',
-            'get_availability_endpoint',
             'supports_webhooks',
             'webhook_details',
             'fields',
-            'availability_fields',
             'optional_fields',
             'notes',
         ], 'root');
 
         $this->assertBoolean($output['has_get_reservations_endpoint'], 'has_get_reservations_endpoint');
-        $this->assertBoolean($output['has_get_availability_endpoint'], 'has_get_availability_endpoint');
         $this->assertBoolean($output['supports_webhooks'], 'supports_webhooks');
         $this->assertNullableString($output['get_reservations_endpoint'], 'get_reservations_endpoint');
-        $this->assertNullableString($output['get_availability_endpoint'], 'get_availability_endpoint');
         $this->assertNullableString($output['webhook_details'], 'webhook_details');
         $this->assertStringArray($output['optional_fields'], 'optional_fields');
         $this->assertStringArray($output['notes'], 'notes');
 
         if ($output['has_get_reservations_endpoint'] === false && $output['get_reservations_endpoint'] !== null) {
             throw new InvalidArgumentException('get_reservations_endpoint must be null when has_get_reservations_endpoint is false.');
-        }
-
-        if ($output['has_get_availability_endpoint'] === false && $output['get_availability_endpoint'] !== null) {
-            throw new InvalidArgumentException('get_availability_endpoint must be null when has_get_availability_endpoint is false.');
         }
 
         if ($output['supports_webhooks'] === false && $output['webhook_details'] !== null) {
@@ -263,6 +139,26 @@ class PmsDocumentAnalysisService
         if ($reservationStatus['available'] === true && $reservationStatus['source_label'] === null) {
             throw new InvalidArgumentException('fields.reservation_status.source_label must be set when available.');
         }
+    }
+
+    private function validateBookingEngineOutput(array $output): void
+    {
+        $this->assertExactKeys($output, [
+            'has_get_availability_endpoint',
+            'get_availability_endpoint',
+            'availability_fields',
+            'optional_fields',
+            'notes',
+        ], 'root');
+
+        $this->assertBoolean($output['has_get_availability_endpoint'], 'has_get_availability_endpoint');
+        $this->assertNullableString($output['get_availability_endpoint'], 'get_availability_endpoint');
+        $this->assertStringArray($output['optional_fields'], 'optional_fields');
+        $this->assertStringArray($output['notes'], 'notes');
+
+        if ($output['has_get_availability_endpoint'] === false && $output['get_availability_endpoint'] !== null) {
+            throw new InvalidArgumentException('get_availability_endpoint must be null when has_get_availability_endpoint is false.');
+        }
 
         if (!is_array($output['availability_fields'])) {
             throw new InvalidArgumentException('availability_fields must be an object.');
@@ -270,14 +166,14 @@ class PmsDocumentAnalysisService
 
         $availabilityFields = $output['availability_fields'];
         $this->assertExactKeys($availabilityFields, [
-            'room_name',
+            'room_description',
             'room_image',
             'price',
             'currency',
         ], 'availability_fields');
 
         foreach ([
-            'room_name',
+            'room_description',
             'room_image',
             'price',
             'currency',
@@ -286,7 +182,18 @@ class PmsDocumentAnalysisService
         }
     }
 
-    private function normalizeOptionalFields(array &$output): void
+    private function getPrompt(string $key): string
+    {
+        $prompt = config("pms_analysis.{$key}");
+
+        if (!is_string($prompt) || trim($prompt) === '') {
+            throw new InvalidArgumentException("Prompt config missing: {$key}");
+        }
+
+        return $prompt;
+    }
+
+    private function normalizeOptionalFields(array &$output, array $requiredLabels): void
     {
         $optional = $output['optional_fields'] ?? [];
         if (!is_array($optional)) {
@@ -294,7 +201,6 @@ class PmsDocumentAnalysisService
             return;
         }
 
-        $requiredLabels = $this->getRequiredFieldLabels($output['fields'] ?? []);
         $requiredNormalized = [];
 
         foreach ($requiredLabels as $label) {
@@ -324,27 +230,6 @@ class PmsDocumentAnalysisService
         $output['optional_fields'] = array_values(array_keys($filtered));
     }
 
-    private function normalizeBookingEngineOutput(array &$output, bool $isBookingEngine): void
-    {
-        if ($isBookingEngine) {
-            return;
-        }
-
-        $output['has_get_availability_endpoint'] = false;
-        $output['get_availability_endpoint'] = null;
-
-        if (!is_array($output['availability_fields'] ?? null)) {
-            $output['availability_fields'] = [];
-        }
-
-        foreach (['room_name', 'room_image', 'price', 'currency'] as $key) {
-            $output['availability_fields'][$key] = [
-                'available' => false,
-                'source_label' => null,
-            ];
-        }
-    }
-
     private function getRequiredFieldLabels(array $fields): array
     {
         $labels = [];
@@ -357,6 +242,30 @@ class PmsDocumentAnalysisService
             'mobile_phone',
             'email',
             'reservation_status',
+        ];
+
+        foreach ($requiredKeys as $key) {
+            $entry = $fields[$key] ?? null;
+            if (!is_array($entry)) {
+                continue;
+            }
+            $label = $entry['source_label'] ?? null;
+            if (is_string($label) && $label !== '') {
+                $labels[] = $label;
+            }
+        }
+
+        return $labels;
+    }
+
+    private function getAvailabilityFieldLabels(array $fields): array
+    {
+        $labels = [];
+        $requiredKeys = [
+            'room_description',
+            'room_image',
+            'price',
+            'currency',
         ];
 
         foreach ($requiredKeys as $key) {

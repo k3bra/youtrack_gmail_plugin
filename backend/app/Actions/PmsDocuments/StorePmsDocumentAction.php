@@ -87,16 +87,25 @@ class StorePmsDocumentAction
             return $this->storeRemoteContent($filename, $content);
         }
 
-        $renderedPdf = $this->renderPdfFromUrl($url);
-        if ($renderedPdf !== '' && $this->looksLikePdf($url, 'application/pdf', $renderedPdf)) {
-            $filename = $this->resolveRemoteFilename($url, null, 'pdf');
-            return $this->storeRemoteContent($filename, $renderedPdf);
+        $renderedText = $this->renderTextFromUrl($url);
+        if ($renderedText !== '' && !$this->isUsefulText($renderedText)) {
+            $renderedText = '';
+        }
+        if ($renderedText !== '') {
+            $filename = $this->resolveRemoteFilename($url, null, 'txt');
+            return $this->storeRemoteContent($filename, $renderedText);
         }
 
         $renderedHtml = $this->renderHtmlFromUrl($url);
         if ($renderedHtml !== '') {
             $filename = $this->resolveRemoteFilename($url, null, 'html');
             return $this->storeRemoteContent($filename, $renderedHtml);
+        }
+
+        $renderedPdf = $this->renderPdfFromUrl($url);
+        if ($renderedPdf !== '' && $this->looksLikePdf($url, 'application/pdf', $renderedPdf)) {
+            $filename = $this->resolveRemoteFilename($url, null, 'pdf');
+            return $this->storeRemoteContent($filename, $renderedPdf);
         }
 
         if ($content !== '') {
@@ -187,6 +196,9 @@ class StorePmsDocumentAction
             $html = Browsershot::url($url)
                 ->timeout(60)
                 ->waitUntilNetworkIdle()
+                ->delay(3000)
+                ->userAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+                ->windowSize(1366, 900)
                 ->bodyHtml();
         } catch (\Throwable $e) {
             return '';
@@ -205,6 +217,9 @@ class StorePmsDocumentAction
             $pdf = Browsershot::url($url)
                 ->timeout(60)
                 ->waitUntilNetworkIdle()
+                ->delay(3000)
+                ->userAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+                ->windowSize(1366, 900)
                 ->showBackground()
                 ->format('A4')
                 ->pdf();
@@ -213,5 +228,79 @@ class StorePmsDocumentAction
         }
 
         return is_string($pdf) ? $pdf : '';
+    }
+
+    private function renderTextFromUrl(string $url): string
+    {
+        if (!class_exists(Browsershot::class)) {
+            return '';
+        }
+
+        try {
+            $text = Browsershot::url($url)
+                ->timeout(60)
+                ->waitUntilNetworkIdle()
+                ->delay(3000)
+                ->userAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+                ->windowSize(1366, 900)
+                ->evaluate('(async () => {'
+                    . 'const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));'
+                    . 'const cleanup = () => {'
+                        . 'document.querySelectorAll("script,style,noscript").forEach(el => el.remove());'
+                    . '};'
+                    . 'const getInner = () => document.body ? document.body.innerText : "";'
+                    . 'const getTextContent = () => document.body ? document.body.textContent : "";'
+                    . 'const pickBest = () => {'
+                        . 'const inner = getInner();'
+                        . 'const raw = getTextContent();'
+                        . 'if (raw && raw.length > inner.length * 1.2) { return raw; }'
+                        . 'return inner || raw;'
+                    . '};'
+                    . 'let best = "";'
+                    . 'for (let i = 0; i < 5; i++) {'
+                        . 'window.scrollTo(0, document.body.scrollHeight);'
+                        . 'await sleep(900);'
+                        . 'cleanup();'
+                        . 'const current = pickBest();'
+                        . 'if (current && current.length > best.length) { best = current; }'
+                    . '}'
+                    . 'return best || pickBest();'
+                . '})()');
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        if (!is_string($text)) {
+            return '';
+        }
+
+        $cleaned = trim($text);
+        if ($cleaned === '') {
+            return '';
+        }
+
+        return $cleaned;
+    }
+
+    private function isUsefulText(string $text): bool
+    {
+        $trimmed = trim($text);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        $length = strlen($trimmed);
+        $wordCount = preg_match_all('/\\b[[:alnum:]]{3,}\\b/u', $trimmed);
+        $lineCount = substr_count($trimmed, "\n");
+
+        if ($length < 200 && $wordCount < 30) {
+            return false;
+        }
+
+        if ($length < 500 && $lineCount < 3) {
+            return false;
+        }
+
+        return true;
     }
 }

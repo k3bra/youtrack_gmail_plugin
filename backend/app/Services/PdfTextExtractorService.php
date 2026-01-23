@@ -7,6 +7,8 @@ use Smalot\PdfParser\Parser;
 
 class PdfTextExtractorService
 {
+    private const MAX_OUTPUT_CHARS = 80000;
+
     public function extractText(string $path): string
     {
         if (!is_file($path)) {
@@ -44,6 +46,14 @@ class PdfTextExtractorService
             }
         }
 
+        $rawPages = [];
+        foreach ($pageLines as $lines) {
+            $rawPages[] = implode("\n", $lines);
+        }
+
+        $rawText = trim(implode("\n\n", $rawPages));
+        $rawText = preg_replace("/\n{3,}/", "\n\n", $rawText);
+
         $filteredPages = [];
 
         foreach ($pageLines as $lines) {
@@ -60,6 +70,16 @@ class PdfTextExtractorService
         $text = trim(implode("\n\n", $filteredPages));
         $text = preg_replace("/\n{3,}/", "\n\n", $text);
 
+        if ($text === '' && $rawText !== '') {
+            $text = $rawText;
+        }
+
+        if ($rawText !== '' && $this->shouldUseRaw($rawText, $text)) {
+            $text = $rawText;
+        }
+
+        $text = $this->truncateText($text);
+
         if ($text === '') {
             throw new RuntimeException('PDF text extraction produced empty output.');
         }
@@ -69,7 +89,7 @@ class PdfTextExtractorService
 
     private function isRemovableHeaderFooter(string $line, int $occurrences): bool
     {
-        if ($occurrences < 2) {
+        if ($occurrences < 3) {
             return false;
         }
 
@@ -86,5 +106,38 @@ class PdfTextExtractorService
         }
 
         return $length <= 80;
+    }
+
+    private function shouldUseRaw(string $rawText, string $filteredText): bool
+    {
+        $rawLength = strlen($rawText);
+        $filteredLength = strlen($filteredText);
+
+        if ($rawLength === 0) {
+            return false;
+        }
+
+        if ($filteredLength === 0) {
+            return true;
+        }
+
+        if ($rawLength >= 4000 && $filteredLength < (int) ($rawLength * 0.35)) {
+            return true;
+        }
+
+        if ($filteredLength < 1200 && $rawLength > ($filteredLength + 2000)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function truncateText(string $text): string
+    {
+        if (strlen($text) <= self::MAX_OUTPUT_CHARS) {
+            return $text;
+        }
+
+        return substr($text, 0, self::MAX_OUTPUT_CHARS) . "\n\n[Truncated]";
     }
 }

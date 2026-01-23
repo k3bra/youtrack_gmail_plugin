@@ -396,7 +396,7 @@
                             </div>
                         </div>
 
-                        <div class="grid gap-6 md:grid-cols-2">
+                        <div class="grid gap-6 md:grid-cols-2" x-show="!isBookingEngine">
                             <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">GET reservations</p>
                                 <div class="mt-3 flex items-center gap-3">
@@ -463,7 +463,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">GET reservations example</p>
                                 <div class="flex items-center gap-3">
@@ -474,7 +474,7 @@
                                     ></span>
                                     <button
                                         class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50 print-hidden"
-                                        :disabled="isLoadingExample || analysis.has_get_reservations_endpoint === false"
+                                        :disabled="isLoadingExample || analysis?.has_get_reservations_endpoint === false"
                                         @click="fetchExample"
                                         x-text="isLoadingExample ? 'Loading...' : 'Load example'"
                                     ></button>
@@ -482,19 +482,19 @@
                             </div>
                             <p
                                 class="mt-3 text-sm text-text-muted"
-                                x-show="analysis.has_get_reservations_endpoint === false"
+                                x-show="analysis?.has_get_reservations_endpoint === false"
                             >
                                 No GET reservations endpoint documented.
                             </p>
                             <p
                                 class="mt-3 text-sm text-text-muted"
-                                x-show="analysis.has_get_reservations_endpoint !== false && !exampleFetched && !isLoadingExample"
+                                x-show="analysis?.has_get_reservations_endpoint !== false && !exampleFetched && !isLoadingExample"
                             >
                                 Click “Load example” to fetch the response payload.
                             </p>
                             <p
                                 class="mt-3 text-sm text-text-muted"
-                                x-show="analysis.has_get_reservations_endpoint !== false && exampleFetched && !examplePayload && !exampleError"
+                                x-show="analysis?.has_get_reservations_endpoint !== false && exampleFetched && !examplePayload && !exampleError"
                             >
                                 No example response documented.
                             </p>
@@ -651,7 +651,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
                             <h3 class="text-sm font-semibold text-text">Required fields</h3>
                             <div class="mt-4 overflow-hidden rounded-xl border border-border">
                                 <table class="min-w-full divide-y divide-border text-sm">
@@ -684,8 +684,8 @@
                         </div>
 
                         <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                            <h3 class="text-sm font-semibold text-text">Other reservation fields</h3>
-                            <p class="mt-2 text-sm text-text-muted">Optional fields found in the documentation.</p>
+                            <h3 class="text-sm font-semibold text-text" x-text="isBookingEngine ? 'Other availability fields' : 'Other reservation fields'"></h3>
+                            <p class="mt-2 text-sm text-text-muted" x-text="isBookingEngine ? 'Optional availability fields found in the documentation.' : 'Optional fields found in the documentation.'"></p>
                             <template x-if="analysis.optional_fields && analysis.optional_fields.length">
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     <template x-for="field in analysis.optional_fields" :key="field">
@@ -704,18 +704,19 @@
                             </p>
                         </div>
 
-                        <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]" x-show="!isBookingEngine">
                             <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
                                 <h3 class="text-sm font-semibold text-text">Reservation status values</h3>
                                 <p
                                     class="mt-2 text-sm text-text-muted"
-                                    x-text="analysis.fields.reservation_status.available && analysis.fields.reservation_status.values.length ? 'Documented status values' : 'No status values documented'"
+                                    x-text="analysis?.fields?.reservation_status?.available && analysis?.fields?.reservation_status?.values?.length ? 'Documented status values' : 'No status values documented'"
                                 ></p>
-                                <template x-if="analysis.fields.reservation_status.values.length">
+                                <template x-if="analysis?.fields?.reservation_status?.values?.length">
                                     <div class="mt-4 flex flex-wrap gap-2">
-                                        <template x-for="status in analysis.fields.reservation_status.values" :key="status">
+                                        <template x-for="status in analysis?.fields?.reservation_status?.values || []" :key="status">
                                             <span
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text"
+                                                class="rounded-full border px-3 py-1 text-xs font-semibold"
+                                                :class="statusBadgeClass(status)"
                                                 x-text="status"
                                             ></span>
                                         </template>

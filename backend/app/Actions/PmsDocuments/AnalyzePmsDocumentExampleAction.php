@@ -18,7 +18,7 @@ class AnalyzePmsDocumentExampleAction
     {
         try {
             $text = $this->extractText->handle($pmsDocument);
-            $example = $this->analysisService->analyzeExample($text);
+            $example = $this->analysisService->analyzeExample($text, (bool) $pmsDocument->is_booking_engine);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 502);
         }

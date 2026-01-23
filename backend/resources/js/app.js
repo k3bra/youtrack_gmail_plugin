@@ -55,7 +55,7 @@ Alpine.data('pmsDocuments', () => ({
         { key: 'reservation_status', label: 'Reservation status' },
     ],
     availabilityDefinitions: [
-        { key: 'room_name', label: 'Room name' },
+        { key: 'room_description', label: 'Room description' },
         { key: 'room_image', label: 'Room image' },
         { key: 'price', label: 'Price' },
         { key: 'currency', label: 'Currency' },
@@ -86,7 +86,7 @@ Alpine.data('pmsDocuments', () => ({
     },
 
     get fieldRows() {
-        if (!this.analysis) {
+        if (!this.analysis || this.isBookingEngine || !this.analysis.fields) {
             return [];
         }
 
@@ -135,6 +135,34 @@ Alpine.data('pmsDocuments', () => ({
                 sourceLabel,
             };
         });
+    },
+
+    statusBadgeClass(status) {
+        const value = String(status || '').toLowerCase();
+
+        if (value.includes('cancel') || value.includes('void') || value.includes('reject') || value.includes('no show') || value.includes('noshow')) {
+            return 'bg-rose-100 text-rose-700 border-rose-200';
+        }
+        if (value.includes('anulada')) {
+            return 'bg-rose-100 text-rose-700 border-rose-200';
+        }
+        if (value.includes('no confirm') || value.includes('not confirm') || value.includes('unconfirm') || value.includes('sin confirmar')) {
+            return 'bg-amber-100 text-amber-700 border-amber-200';
+        }
+        if (value.includes('confirm') || value.includes('booked')) {
+            return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+        }
+        if (value.includes('option') || value.includes('hold') || value.includes('pending') || value.includes('tentative') || value.includes('inquiry')) {
+            return 'bg-amber-100 text-amber-700 border-amber-200';
+        }
+        if (value.includes('checkin') || value.includes('checked in') || value.includes('inhouse')) {
+            return 'bg-sky-100 text-sky-700 border-sky-200';
+        }
+        if (value.includes('checkout') || value.includes('checked out') || value.includes('depart')) {
+            return 'bg-violet-100 text-violet-700 border-violet-200';
+        }
+
+        return 'bg-slate-100 text-slate-700 border-slate-200';
     },
 
     get formattedExamplePayload() {
