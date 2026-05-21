@@ -6,7 +6,9 @@ use App\Http\Controllers\PmsDocumentTicketIndexController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/login');
+    return auth()->check()
+        ? redirect('/pms-documents')
+        : redirect('/login');
 });
 
 Route::middleware('guest')->group(function () {
