@@ -8,24 +8,111 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    --color-primary: #1b5cff;
-    --color-primary-dark: #1347c7;
-    --color-primary-soft: #e8eeff;
-    --color-accent: #7b61ff;
-    --color-accent-soft: #f1eeff;
-    --color-text: #0f172a;
-    --color-text-muted: #475569;
-    --color-border: #e2e8f0;
-    --color-page: #f8fafc;
+    --color-primary: #2457d6;
+    --color-primary-dark: #193f9f;
+    --color-primary-soft: #e9efff;
+    --color-accent: #0f9f8f;
+    --color-accent-soft: #e7f7f4;
+    --color-text: #111827;
+    --color-text-muted: #526074;
+    --color-border: #d9e1ec;
+    --color-page: #f5f7fb;
     --color-card: #ffffff;
 }
 
 html {
-    font-size: clamp(16px, 0.5vw + 12px, 20px);
+    font-size: 16px;
+}
+
+body {
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
 [x-cloak] {
     display: none !important;
+}
+
+.app-shell {
+    background:
+        linear-gradient(180deg, #f9fbff 0%, var(--color-page) 28%, #eef3f9 100%);
+}
+
+.app-header {
+    border-bottom: 1px solid rgba(217, 225, 236, 0.9);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(12px);
+}
+
+.brand-mark {
+    display: inline-flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: var(--color-text);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.ai-badge {
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+}
+
+.auth-page {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background:
+        linear-gradient(180deg, #fbfcff 0%, #f4f7fb 48%, #edf2f7 100%);
+    padding: 2rem;
+}
+
+.auth-shell {
+    display: grid;
+    width: min(100%, 60rem);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-card);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+.auth-panel {
+    padding: 2rem;
+}
+
+.auth-aside {
+    display: none;
+    background: #111827;
+    color: white;
+    padding: 2rem;
+}
+
+@media (min-width: 768px) {
+    .auth-shell {
+        grid-template-columns: 0.9fr 1.1fr;
+    }
+
+    .auth-aside {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .auth-panel {
+        padding: 2.5rem;
+    }
 }
 
 @media print {

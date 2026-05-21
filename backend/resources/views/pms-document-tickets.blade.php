@@ -7,21 +7,29 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="bg-page text-text">
-        <div class="min-h-screen bg-page">
-            <header class="border-b border-border bg-card shadow-sm">
+        <div class="app-shell min-h-screen">
+            <header class="app-header sticky top-0 z-30">
                 <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 sm:px-8 sm:py-4 lg:px-12">
                     <div class="flex items-center gap-2">
-                        <a href="/pms-documents" class="inline-flex items-center gap-2">
+                        <a href="/pms-documents" class="inline-flex items-center gap-3">
+                            <span class="brand-mark">D</span>
                             <span class="text-base font-semibold text-text">DocSnitch</span>
-                            <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent bg-accent-soft/70 text-accent/80">
-                                AI
-                            </span>
+                            <span class="ai-badge">AI</span>
                         </a>
                     </div>
-                    <div class="hidden md:block">
-                        <span class="rounded-full border border-border bg-page px-3 py-1 text-[10px] font-semibold text-text-muted">
-                            Version 1.0
+                    <div class="flex items-center gap-3">
+                        <span class="hidden rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm md:inline-flex">
+                            {{ auth()->user()?->email }}
                         </span>
+                        <form method="POST" action="/logout">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm transition hover:border-primary hover:text-primary"
+                            >
+                                Logout
+                            </button>
+                        </form>
                     </div>
                 </div>
             </header>
@@ -36,14 +44,14 @@
                         </p>
                     </div>
                     <a
-                        class="rounded-full border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                        class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                         href="/pms-documents"
                     >
                         Back to analyses
                     </a>
                 </div>
 
-                <div class="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <div class="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
                     @if ($tickets->isEmpty())
                         <p class="text-sm text-text-muted">No tickets created yet.</p>
                     @else
@@ -80,7 +88,7 @@
                                                 </a>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <span class="inline-flex items-center rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted">
+                                                <span class="inline-flex items-center rounded-lg border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted">
                                                     {{ $ticket->issue_status ?? 'Unknown' }}
                                                 </span>
                                             </td>
@@ -96,7 +104,7 @@
                                             <td class="px-4 py-3 text-right">
                                                 @if ($document)
                                                     <a
-                                                        class="rounded-full border border-primary bg-page px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                                        class="rounded-lg border border-primary bg-page px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                                         href="/pms-documents/{{ $document->id }}"
                                                     >
                                                         View document
@@ -113,14 +121,14 @@
 
                         <div class="mt-4 flex items-center justify-between">
                             <a
-                                class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft {{ $tickets->onFirstPage() ? 'pointer-events-none opacity-50' : '' }}"
+                                class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark {{ $tickets->onFirstPage() ? 'pointer-events-none opacity-50' : '' }}"
                                 href="{{ $tickets->previousPageUrl() ?? '#' }}"
                             >
                                 Previous
                             </a>
                             <p class="text-xs font-semibold text-text-muted">Page {{ $tickets->currentPage() }}</p>
                             <a
-                                class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft {{ $tickets->nextPageUrl() ? '' : 'pointer-events-none opacity-50' }}"
+                                class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark {{ $tickets->nextPageUrl() ? '' : 'pointer-events-none opacity-50' }}"
                                 href="{{ $tickets->nextPageUrl() ?? '#' }}"
                             >
                                 Next

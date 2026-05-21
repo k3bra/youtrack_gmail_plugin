@@ -8,21 +8,29 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="bg-page text-text">
-        <div class="min-h-screen bg-page" x-data="pmsDocuments()" x-cloak x-init="initPage()">
-            <header class="border-b border-border bg-card shadow-sm">
+        <div class="app-shell min-h-screen" x-data="pmsDocuments()" x-cloak x-init="initPage()">
+            <header class="app-header sticky top-0 z-30">
                 <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 sm:px-8 sm:py-4 lg:px-12">
                     <div class="flex items-center gap-2">
-                        <a href="/pms-documents" class="inline-flex items-center gap-2">
+                        <a href="/pms-documents" class="inline-flex items-center gap-3">
+                            <span class="brand-mark">D</span>
                             <span class="text-base font-semibold text-text">DocSnitch</span>
-                            <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent bg-accent-soft/70 text-accent/80">
-                                AI
-                            </span>
+                            <span class="ai-badge">AI</span>
                         </a>
                     </div>
-                    <div class="hidden md:block">
-                        <span class="rounded-full border border-border bg-page px-3 py-1 text-[10px] font-semibold text-text-muted">
-                            Version 1.0
+                    <div class="flex items-center gap-3">
+                        <span class="hidden rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm md:inline-flex">
+                            {{ auth()->user()?->email }}
                         </span>
+                        <form method="POST" action="/logout">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm transition hover:border-primary hover:text-primary"
+                            >
+                                Logout
+                            </button>
+                        </form>
                     </div>
                 </div>
             </header>
@@ -30,8 +38,8 @@
             <main class="mx-auto max-w-7xl px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
                 <template x-if="!analysis">
                     <section class="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div class="rounded-2xl border border-border bg-card shadow-md overflow-hidden ring-1 ring-border/70">
-                            <div class="bg-gradient-to-br from-primary-soft to-card px-6 pt-6 pb-5 from-primary-soft/70 px-5 pt-5 pb-4">
+                        <div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+                            <div class="border-b border-border bg-white px-6 pb-5 pt-6">
                                 <h2 class="text-lg font-semibold text-text">Upload PMS documentation</h2>
                                 <p class="mt-2 text-sm text-text-muted">
                                     PDF file or URL. Text is extracted locally before analysis.
@@ -41,7 +49,7 @@
                                     <div class="mt-2 flex flex-wrap items-center gap-2">
                                         <button
                                             type="button"
-                                            class="rounded-full border px-4 py-2 text-xs font-semibold transition"
+                                            class="rounded-lg border px-4 py-2 text-xs font-semibold transition"
                                             :class="isBookingEngine ? 'border-border bg-page text-text-muted hover:text-text' : 'border-primary bg-primary text-white shadow-sm'"
                                             @click="isBookingEngine = false"
                                         >
@@ -49,7 +57,7 @@
                                         </button>
                                         <button
                                             type="button"
-                                            class="rounded-full border px-4 py-2 text-xs font-semibold transition"
+                                            class="rounded-lg border px-4 py-2 text-xs font-semibold transition"
                                             :class="isBookingEngine ? 'border-primary bg-primary text-white shadow-sm' : 'border-border bg-page text-text-muted hover:text-text'"
                                             @click="isBookingEngine = true"
                                         >
@@ -62,13 +70,13 @@
                                     <input
                                         type="text"
                                         placeholder="e.g. Sabee API"
-                                        class="mt-2 w-full rounded-xl border border-border bg-page px-4 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-0"
+                                        class="mt-2 w-full rounded-lg border border-border bg-page px-4 py-2 text-sm text-text shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
                                         x-model="documentTitle"
                                     >
                                 </div>
 
                                 <div
-                                    class="mt-6 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition flex flex-col items-center justify-center py-8 mt-5 px-5 py-7"
+                                    class="mt-5 flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-5 py-8 text-center transition"
                                     :class="dropZoneClasses"
                                     @dragenter.prevent="isDragging = true"
                                     @dragleave.prevent="isDragging = false"
@@ -100,7 +108,7 @@
                                         <input
                                             type="url"
                                             placeholder="Paste URL"
-                                            class="mt-3 w-full rounded-xl border border-border bg-page px-4 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-0"
+                                            class="mt-3 w-full rounded-lg border border-border bg-page px-4 py-2 text-sm text-text shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
                                             x-model="documentUrl"
                                             @input="handleUrlInput"
                                         >
@@ -108,14 +116,14 @@
                                 </div>
                             </div>
 
-                            <div class="border-t border-border bg-card px-6 py-5 px-5 py-4">
+                            <div class="bg-card px-5 py-4">
                                 <div class="flex flex-wrap items-end justify-between gap-4">
-                                    <div class="flex-1 rounded-xl border border-border bg-page px-4 py-3 py-2">
+                                    <div class="flex-1 rounded-lg border border-border bg-page px-4 py-2">
                                         <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Selected source</p>
                                         <p class="mt-2 text-sm font-medium text-text" x-text="fileName ? fileName : 'No source selected'"></p>
                                     </div>
                                     <button
-                                        class="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark shadow-sm ring-1 ring-primary/20 disabled:cursor-not-allowed disabled:bg-primary-soft disabled:text-text-muted self-end"
+                                        class="self-end rounded-lg bg-primary px-6 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-primary/20 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-primary-soft disabled:text-text-muted"
                                         :disabled="(!file && !documentUrl.trim()) || isUploading || isAnalyzing"
                                         @click="analyzeDocument"
                                         x-text="analyzeButtonLabel"
@@ -131,18 +139,18 @@
                         </div>
 
                         <aside class="space-y-6">
-                            <div class="rounded-2xl border border-border bg-card p-6 p-5 bg-page shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
                                 <div class="flex flex-wrap items-center justify-between gap-3">
                                     <h3 class="text-sm font-semibold text-text">Recent analyses</h3>
                                     <div class="flex items-center gap-2">
                                         <a
-                                            class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                            class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                             href="/pms-document-tickets"
                                         >
                                             All tickets
                                         </a>
                                         <button
-                                            class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
+                                            class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
                                             @click="loadHistory"
                                             :disabled="isLoadingHistory"
                                         >
@@ -166,7 +174,7 @@
                                                 <p class="text-xs text-text-muted" x-text="formatHistoryMeta(entry)"></p>
                                             </div>
                                             <button
-                                                class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                                class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                                 @click="loadHistoryItem(entry.id, true)"
                                             >
                                                 View
@@ -176,7 +184,7 @@
                                 </ul>
                                 <div class="mt-4 flex items-center justify-between gap-3" x-show="history.length">
                                     <button
-                                        class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
+                                        class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
                                         :disabled="!historyPrevPage"
                                         @click="changeHistoryPage(historyPrevPage)"
                                     >
@@ -184,7 +192,7 @@
                                     </button>
                                     <p class="text-xs font-semibold text-text-muted" x-text="`Page ${historyPage}`"></p>
                                     <button
-                                        class="rounded-full border border-primary bg-card px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
+                                        class="rounded-lg border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50"
                                         :disabled="!historyNextPage"
                                         @click="changeHistoryPage(historyNextPage)"
                                     >
@@ -193,7 +201,7 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-border bg-page p-6 p-5 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
                                 <h3 class="text-sm font-semibold text-text">What this tool checks</h3>
                                 <ul class="mt-4 space-y-3 text-sm text-text-muted text-xs">
                                     <li class="flex items-start gap-2">
@@ -211,7 +219,7 @@
                                 </ul>
                             </div>
 
-                            <div class="rounded-2xl border border-border bg-page p-6 p-5 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
                                 <h3 class="text-sm font-semibold text-text">Processing steps</h3>
                                 <ol class="mt-4 space-y-3 text-sm text-text-muted text-xs">
                                     <li class="flex items-start gap-2">
@@ -246,13 +254,13 @@
                                         <label class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Title</label>
                                         <input
                                             type="text"
-                                            class="mt-2 w-full rounded-xl border border-border bg-page px-4 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-0"
+                                            class="mt-2 w-full rounded-lg border border-border bg-page px-4 py-2 text-sm text-text shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
                                             x-model="documentTitle"
                                             :placeholder="defaultTitle"
                                         >
                                     </div>
                                     <button
-                                        class="rounded-full border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
+                                        class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
                                         :disabled="isSavingTitle || !documentId"
                                         @click="saveTitle"
                                         x-text="isSavingTitle ? 'Saving...' : 'Save title'"
@@ -263,19 +271,19 @@
                             </div>
                             <div class="flex flex-wrap items-center gap-3">
                                 <button
-                                    class="rounded-full border border-primary bg-card px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft print-hidden"
+                                    class="rounded-lg border border-primary bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
                                     @click="exportPdf"
                                 >
                                     Export to PDF
                                 </button>
                                 <button
-                                    class="rounded-full border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft print-hidden"
+                                    class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
                                     @click="openTicketModal"
                                 >
                                     Create YouTrack ticket
                                 </button>
                                 <button
-                                    class="rounded-full border border-primary bg-card px-5 py-2 text-sm font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft print-hidden"
+                                    class="rounded-lg border border-primary bg-card px-5 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
                                     @click="reset"
                                 >
                                     Analyze another document
@@ -301,7 +309,7 @@
                             @keydown.escape.window="closeTicketModal"
                         >
                             <div
-                                class="w-full max-w-5xl rounded-2xl bg-card p-6 shadow-xl"
+                                class="w-full max-w-5xl rounded-lg bg-card p-6 shadow-xl"
                                 @click.outside="closeTicketModal"
                             >
                                 <div class="flex items-center justify-between gap-4">
@@ -310,7 +318,7 @@
                                         <h3 class="mt-2 text-lg font-semibold text-text">Review and edit before sending</h3>
                                     </div>
                                     <button
-                                        class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                        class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                         @click="closeTicketModal"
                                     >
                                         Close
@@ -323,7 +331,7 @@
                                         <div class="mt-3 flex flex-wrap gap-2">
                                             <button
                                                 type="button"
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                                class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                                 title="Bold"
                                                 @click="applyTicketMarkdown('bold')"
                                             >
@@ -331,7 +339,7 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                                class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                                 title="Italic"
                                                 @click="applyTicketMarkdown('italic')"
                                             >
@@ -339,7 +347,7 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                                class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                                 title="Heading"
                                                 @click="applyTicketMarkdown('heading')"
                                             >
@@ -347,7 +355,7 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                                class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                                 title="List"
                                                 @click="applyTicketMarkdown('list')"
                                             >
@@ -355,7 +363,7 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                                class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                                 title="Code block"
                                                 @click="applyTicketMarkdown('code')"
                                             >
@@ -363,14 +371,14 @@
                                             </button>
                                         </div>
                                         <textarea
-                                            class="mt-3 h-80 w-full resize-none rounded-xl border border-border bg-page p-4 text-sm text-text focus:border-primary focus:outline-none focus:ring-0"
+                                            class="mt-3 h-80 w-full resize-none rounded-lg border border-border bg-page p-4 text-sm text-text focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
                                             x-ref="ticketDraftInput"
                                             x-model="ticketDraft"
                                         ></textarea>
                                     </div>
                                     <div>
                                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Preview</p>
-                                        <div class="mt-3 h-80 overflow-y-auto rounded-xl border border-border bg-card p-4">
+                                        <div class="mt-3 h-80 overflow-y-auto rounded-lg border border-border bg-card p-4">
                                             <div x-html="ticketPreviewHtml"></div>
                                         </div>
                                     </div>
@@ -380,13 +388,13 @@
                                     <p class="text-sm text-rose-600" x-show="ticketError" x-text="ticketError"></p>
                                     <div class="flex items-center gap-3">
                                         <button
-                                            class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                            class="rounded-lg border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                             @click="closeTicketModal"
                                         >
                                             Cancel
                                         </button>
                                         <button
-                                            class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
+                                            class="rounded-lg border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
                                             :disabled="isCreatingTicket"
                                             @click="createTicket"
                                             x-text="isCreatingTicket ? 'Creating...' : 'Create YouTrack ticket'"
@@ -397,11 +405,11 @@
                         </div>
 
                         <div class="grid gap-6 md:grid-cols-2" x-show="!isBookingEngine">
-                            <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">GET reservations</p>
                                 <div class="mt-3 flex items-center gap-3">
                                     <span
-                                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                        class="inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold"
                                         :class="analysis.has_get_reservations_endpoint ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                         x-text="analysis.has_get_reservations_endpoint ? 'Yes' : 'No'"
                                     ></span>
@@ -409,11 +417,11 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Webhooks</p>
                                 <div class="mt-3 flex items-center gap-3">
                                     <span
-                                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                        class="inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold"
                                         :class="analysis.supports_webhooks ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                         x-text="analysis.supports_webhooks ? 'Yes' : 'No'"
                                     ></span>
@@ -422,18 +430,18 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm" x-show="isBookingEngine">
+                        <div class="rounded-lg border border-border bg-card p-6 shadow-sm" x-show="isBookingEngine">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Room availability</p>
                                 <span
-                                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                    class="inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold"
                                     :class="analysis.has_get_availability_endpoint ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                     x-text="analysis.has_get_availability_endpoint ? 'Endpoint found' : 'Endpoint missing'"
                                 ></span>
                             </div>
                             <div class="mt-3 flex items-center gap-3">
                                 <span
-                                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                    class="inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold"
                                     :class="analysis.has_get_availability_endpoint ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                     x-text="analysis.has_get_availability_endpoint ? 'Yes' : 'No'"
                                 ></span>
@@ -447,11 +455,11 @@
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Required fields</p>
                                 <div class="mt-3 grid gap-3 sm:grid-cols-2">
                                     <template x-for="row in availabilityRows" :key="row.key">
-                                        <div class="rounded-xl border border-border bg-page px-3 py-2">
+                                        <div class="rounded-lg border border-border bg-page px-3 py-2">
                                             <div class="flex items-center justify-between gap-2">
                                                 <span class="text-sm font-medium text-text" x-text="row.label"></span>
                                                 <span
-                                                    class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold"
+                                                    class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold"
                                                     :class="row.available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                                     x-text="row.available ? 'Yes' : 'No'"
                                                 ></span>
@@ -463,17 +471,17 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
+                        <div class="rounded-lg border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">GET reservations example</p>
                                 <div class="flex items-center gap-3">
                                     <span
-                                        class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-text-muted"
+                                        class="rounded-lg border border-border bg-page px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-text-muted"
                                         x-show="exampleFormat"
                                         x-text="exampleFormat"
                                     ></span>
                                     <button
-                                        class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50 print-hidden"
+                                        class="rounded-lg border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted disabled:opacity-50 print-hidden"
                                         :disabled="isLoadingExample || analysis?.has_get_reservations_endpoint === false"
                                         @click="fetchExample"
                                         x-text="isLoadingExample ? 'Loading...' : 'Load example'"
@@ -512,22 +520,22 @@
                                 <summary class="cursor-pointer text-sm font-semibold text-text">
                                     View example payload
                                 </summary>
-                                <pre class="mt-3 overflow-x-auto rounded-xl border border-border bg-page p-4 text-xs text-text-muted"><code class="syntax-highlight" x-html="highlightedExamplePayload"></code></pre>
+                                <pre class="mt-3 overflow-x-auto rounded-lg border border-border bg-page p-4 text-xs text-text-muted"><code class="syntax-highlight" x-html="highlightedExamplePayload"></code></pre>
                             </details>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Tickets</p>
                                 <div class="flex items-center gap-2">
                                     <a
-                                        class="rounded-full border border-primary bg-page px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft print-hidden"
+                                        class="rounded-lg border border-primary bg-page px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
                                         href="/pms-document-tickets"
                                     >
                                         All tickets
                                     </a>
                                     <button
-                                        class="rounded-full border border-primary bg-page px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft print-hidden"
+                                        class="rounded-lg border border-primary bg-page px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
                                         @click="loadTickets(true)"
                                         :disabled="isLoadingTickets"
                                     >
@@ -560,13 +568,13 @@
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <a
-                                                class="rounded-full border border-primary bg-page px-3 py-1 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                                class="rounded-lg border border-primary bg-page px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                                 href="#"
                                                 @click.prevent="openIssueModal(ticket.issue_id)"
                                             >
                                                 View
                                             </a>
-                                            <span class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted">
+                                            <span class="rounded-lg border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted">
                                                 <span x-text="ticket.issue_status || 'Unknown'"></span>
                                             </span>
                                         </div>
@@ -582,7 +590,7 @@
                             @keydown.escape.window="closeIssueModal"
                         >
                             <div
-                                class="w-full max-w-6xl rounded-2xl bg-card p-6 shadow-xl"
+                                class="w-full max-w-6xl rounded-lg bg-card p-6 shadow-xl"
                                 @click.outside="closeIssueModal"
                             >
                                 <div class="flex items-center justify-between gap-4">
@@ -594,7 +602,7 @@
                                         ></h3>
                                     </div>
                                     <button
-                                        class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+                                        class="rounded-lg border border-border bg-page px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:border-primary hover:text-primary"
                                         @click="closeIssueModal"
                                     >
                                         Close
@@ -608,14 +616,14 @@
                                     <div>
                                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Body</p>
                                         <textarea
-                                            class="mt-3 h-72 w-full resize-none rounded-xl border border-border bg-page p-4 text-sm text-text focus:border-primary focus:outline-none focus:ring-0"
+                                            class="mt-3 h-72 w-full resize-none rounded-lg border border-border bg-page p-4 text-sm text-text focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
                                             x-model="issueBodyDraft"
                                         ></textarea>
                                         <p class="mt-2 text-xs text-text-muted">Markdown supported.</p>
                                     </div>
                                     <div>
                                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Details</p>
-                                        <div class="mt-3 rounded-xl border border-border bg-page p-4">
+                                        <div class="mt-3 rounded-lg border border-border bg-page p-4">
                                             <dl class="space-y-3 text-sm">
                                                 <template x-for="row in issueFieldRows" :key="row.label">
                                                     <div class="flex items-start justify-between gap-4">
@@ -635,13 +643,13 @@
                                     <p class="text-sm text-emerald-700" x-show="issueModalSuccess" x-text="issueModalSuccess"></p>
                                     <div class="flex items-center gap-3">
                                         <button
-                                            class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft"
+                                            class="rounded-lg border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
                                             @click="closeIssueModal"
                                         >
                                             Cancel
                                         </button>
                                         <button
-                                            class="rounded-full border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:text-primary-dark hover:bg-primary-soft disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
+                                            class="rounded-lg border border-primary bg-page px-4 py-2 text-xs font-semibold text-primary transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
                                             :disabled="isUpdatingIssue || isLoadingIssue || !issueModal"
                                             @click="updateIssueBody"
                                             x-text="isUpdatingIssue ? 'Updating...' : 'Update body'"
@@ -651,9 +659,9 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
+                        <div class="rounded-lg border border-border bg-card p-6 shadow-sm" x-show="!isBookingEngine">
                             <h3 class="text-sm font-semibold text-text">Required fields</h3>
-                            <div class="mt-4 overflow-hidden rounded-xl border border-border">
+                            <div class="mt-4 overflow-hidden rounded-lg border border-border">
                                 <table class="min-w-full divide-y divide-border text-sm">
                                     <thead class="bg-page text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                                         <tr>
@@ -669,7 +677,7 @@
                                                 <td class="px-4 py-3 font-medium text-text" x-text="row.label"></td>
                                                 <td class="px-4 py-3">
                                                     <span
-                                                        class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold"
+                                                        class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold"
                                                         :class="row.available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
                                                         x-text="row.available ? 'Yes' : 'No'"
                                                     ></span>
@@ -683,14 +691,14 @@
                             </div>
                         </div>
 
-                        <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <h3 class="text-sm font-semibold text-text" x-text="isBookingEngine ? 'Other availability fields' : 'Other reservation fields'"></h3>
                             <p class="mt-2 text-sm text-text-muted" x-text="isBookingEngine ? 'Optional availability fields found in the documentation.' : 'Optional fields found in the documentation.'"></p>
                             <template x-if="analysis.optional_fields && analysis.optional_fields.length">
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     <template x-for="field in analysis.optional_fields" :key="field">
                                         <span
-                                            class="rounded-full border border-border bg-page px-3 py-1 text-xs font-semibold text-text"
+                                            class="rounded-lg border border-border bg-page px-3 py-1 text-xs font-semibold text-text"
                                             x-text="field"
                                         ></span>
                                     </template>
@@ -705,7 +713,7 @@
                         </div>
 
                         <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]" x-show="!isBookingEngine">
-                            <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                                 <h3 class="text-sm font-semibold text-text">Reservation status values</h3>
                                 <p
                                     class="mt-2 text-sm text-text-muted"
@@ -715,7 +723,7 @@
                                     <div class="mt-4 flex flex-wrap gap-2">
                                         <template x-for="status in analysis?.fields?.reservation_status?.values || []" :key="status">
                                             <span
-                                                class="rounded-full border px-3 py-1 text-xs font-semibold"
+                                                class="rounded-lg border px-3 py-1 text-xs font-semibold"
                                                 :class="statusBadgeClass(status)"
                                                 x-text="status"
                                             ></span>
@@ -724,7 +732,7 @@
                                 </template>
                             </div>
 
-                            <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                            <div class="rounded-lg border border-border bg-card p-6 shadow-sm">
                                 <h3 class="text-sm font-semibold text-text">Analyst notes</h3>
                                 <p x-show="analysis.notes.length === 0" class="mt-2 text-sm text-text-muted">
                                     No additional notes provided.
