@@ -12,20 +12,20 @@
                 <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 sm:px-8 sm:py-4 lg:px-12">
                     <div class="flex items-center gap-2">
                         <a href="/pms-documents" class="inline-flex items-center gap-3">
-                            <span class="brand-mark">D</span>
-                            <span class="text-base font-semibold text-text">DocSnitch</span>
+                            <span class="brand-mark bg-white text-text">D</span>
+                            <span class="text-base font-semibold text-white">DocSnitch</span>
                             <span class="ai-badge">AI</span>
                         </a>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="hidden rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm md:inline-flex">
+                        <span class="hidden rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 shadow-sm md:inline-flex">
                             {{ auth()->user()?->email }}
                         </span>
                         <form method="POST" action="/logout">
                             @csrf
                             <button
                                 type="submit"
-                                class="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm transition hover:border-primary hover:text-primary"
+                                class="rounded-lg border border-white/15 bg-white px-3 py-1.5 text-xs font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent"
                             >
                                 Logout
                             </button>
@@ -35,16 +35,16 @@
             </header>
 
             <main class="mx-auto max-w-7xl px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
-                <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center justify-between gap-5 rounded-lg bg-text p-6 text-white shadow-sm">
                     <div>
-                        <p class="text-xs uppercase tracking-[0.2em] text-text-muted">YouTrack</p>
-                        <h1 class="mt-2 text-2xl font-semibold text-text">Tickets created from analyses</h1>
-                        <p class="mt-2 text-sm text-text-muted">
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">YouTrack</p>
+                        <h1 class="mt-2 text-2xl font-semibold text-white">Tickets created from analyses</h1>
+                        <p class="mt-2 text-sm leading-6 text-white/65">
                             Access the linked document for each ticket.
                         </p>
                     </div>
                     <a
-                        class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark"
+                        class="rounded-lg border border-white/15 bg-white px-4 py-2 text-xs font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent"
                         href="/pms-documents"
                     >
                         Back to analyses

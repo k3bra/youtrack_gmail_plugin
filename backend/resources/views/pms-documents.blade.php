@@ -13,20 +13,20 @@
                 <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 sm:px-8 sm:py-4 lg:px-12">
                     <div class="flex items-center gap-2">
                         <a href="/pms-documents" class="inline-flex items-center gap-3">
-                            <span class="brand-mark">D</span>
-                            <span class="text-base font-semibold text-text">DocSnitch</span>
+                            <span class="brand-mark bg-white text-text">D</span>
+                            <span class="text-base font-semibold text-white">DocSnitch</span>
                             <span class="ai-badge">AI</span>
                         </a>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="hidden rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm md:inline-flex">
+                        <span class="hidden rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 shadow-sm md:inline-flex">
                             {{ auth()->user()?->email }}
                         </span>
                         <form method="POST" action="/logout">
                             @csrf
                             <button
                                 type="submit"
-                                class="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm transition hover:border-primary hover:text-primary"
+                                class="rounded-lg border border-white/15 bg-white px-3 py-1.5 text-xs font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent"
                             >
                                 Logout
                             </button>
@@ -39,13 +39,16 @@
                 <template x-if="!analysis">
                     <section class="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                         <div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-                            <div class="border-b border-border bg-white px-6 pb-5 pt-6">
-                                <h2 class="text-lg font-semibold text-text">Upload PMS documentation</h2>
-                                <p class="mt-2 text-sm text-text-muted">
+                            <div class="bg-text px-6 pb-5 pt-6 text-white">
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">Document intake</p>
+                                <h2 class="mt-3 text-xl font-semibold">Upload PMS documentation</h2>
+                                <p class="mt-2 text-sm leading-6 text-white/65">
                                     PDF file or URL. Text is extracted locally before analysis.
                                 </p>
+                            </div>
+                            <div class="border-b border-border bg-white px-6 pb-5 pt-5">
                                 <div class="mt-4">
-                                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Mode</p>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Mode</p>
                                     <div class="mt-2 flex flex-wrap items-center gap-2">
                                         <button
                                             type="button"
@@ -66,7 +69,7 @@
                                     </div>
                                 </div>
                                 <div class="mt-4">
-                                    <label class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Title (optional)</label>
+                                    <label class="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Title (optional)</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. Sabee API"
@@ -83,8 +86,8 @@
                                     @dragover.prevent
                                     @drop.prevent="handleDrop($event)"
                                 >
-                                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-page text-text-muted">
-                                        <span class="text-xl">PDF</span>
+                                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-text text-white">
+                                        <span class="text-sm font-semibold">PDF</span>
                                     </div>
                                     <p class="mt-4 text-sm font-medium text-text">
                                         Drop PDF here
@@ -100,7 +103,7 @@
                                         @change="handleFileInput($event)"
                                     >
                                     <div class="mt-4 w-full">
-                                        <div class="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+                                        <div class="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
                                             <span class="h-px flex-1 bg-border"></span>
                                             <span>or</span>
                                             <span class="h-px flex-1 bg-border"></span>
@@ -119,7 +122,7 @@
                             <div class="bg-card px-5 py-4">
                                 <div class="flex flex-wrap items-end justify-between gap-4">
                                     <div class="flex-1 rounded-lg border border-border bg-page px-4 py-2">
-                                        <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Selected source</p>
+                                        <p class="text-xs uppercase tracking-[0.16em] text-text-muted">Selected source</p>
                                         <p class="mt-2 text-sm font-medium text-text" x-text="fileName ? fileName : 'No source selected'"></p>
                                     </div>
                                     <button
@@ -242,48 +245,48 @@
 
                 <template x-if="analysis">
                     <section class="space-y-8">
-                        <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex flex-wrap items-center justify-between gap-5 rounded-lg bg-text p-6 text-white shadow-sm">
                             <div>
-                                <p class="text-xs uppercase tracking-[0.2em] text-text-muted">Analysis complete</p>
-                                <h2 class="mt-2 text-2xl font-semibold text-text">Reservation capability report</h2>
-                                <p class="mt-2 text-sm text-text-muted">
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">Analysis complete</p>
+                                <h2 class="mt-2 text-2xl font-semibold text-white">Reservation capability report</h2>
+                                <p class="mt-2 text-sm leading-6 text-white/65">
                                     Review the extracted capabilities below. Missing information is flagged as unavailable.
                                 </p>
                                 <div class="mt-4 flex flex-wrap items-end gap-3">
                                     <div class="min-w-[220px] flex-1">
-                                        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Title</label>
+                                        <label class="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">Title</label>
                                         <input
                                             type="text"
-                                            class="mt-2 w-full rounded-lg border border-border bg-page px-4 py-2 text-sm text-text shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary-soft"
+                                            class="mt-2 w-full rounded-lg border border-white/15 bg-white px-4 py-2 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent-soft"
                                             x-model="documentTitle"
                                             :placeholder="defaultTitle"
                                         >
                                     </div>
                                     <button
-                                        class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:border-border disabled:text-text-muted"
+                                        class="rounded-lg border border-white/15 bg-white px-4 py-2 text-xs font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
                                         :disabled="isSavingTitle || !documentId"
                                         @click="saveTitle"
                                         x-text="isSavingTitle ? 'Saving...' : 'Save title'"
                                     ></button>
                                 </div>
-                                <p class="mt-2 text-xs text-rose-600" x-show="titleError" x-text="titleError"></p>
-                                <p class="mt-2 text-xs text-emerald-700" x-show="titleSuccess" x-text="titleSuccess"></p>
+                                <p class="mt-2 text-xs text-rose-200" x-show="titleError" x-text="titleError"></p>
+                                <p class="mt-2 text-xs text-emerald-200" x-show="titleSuccess" x-text="titleSuccess"></p>
                             </div>
                             <div class="flex flex-wrap items-center gap-3">
                                 <button
-                                    class="rounded-lg border border-primary bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
+                                    class="rounded-lg border border-white/15 bg-white px-4 py-2 text-sm font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent print-hidden"
                                     @click="exportPdf"
                                 >
                                     Export to PDF
                                 </button>
                                 <button
-                                    class="rounded-lg border border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
+                                    class="rounded-lg border border-white/15 bg-white px-4 py-2 text-xs font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent print-hidden"
                                     @click="openTicketModal"
                                 >
                                     Create YouTrack ticket
                                 </button>
                                 <button
-                                    class="rounded-lg border border-primary bg-card px-5 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary-dark hover:bg-primary-soft hover:text-primary-dark print-hidden"
+                                    class="rounded-lg border border-white/15 bg-white px-5 py-2 text-sm font-semibold text-text shadow-sm transition hover:bg-accent-soft hover:text-accent print-hidden"
                                     @click="reset"
                                 >
                                     Analyze another document
