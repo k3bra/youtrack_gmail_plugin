@@ -22,6 +22,9 @@ Route::middleware([ClientKeyMiddleware::class])
     ->post('/tickets/from-email', [TicketFromEmailController::class, 'store']);
 
 Route::middleware([ClientKeyMiddleware::class])
+    ->post('/tickets/preview', [TicketFromEmailController::class, 'preview']);
+
+Route::middleware([ClientKeyMiddleware::class])
     ->get('/youtrack/issues/{issueId}', [YouTrackIssueController::class, 'show']);
 
 Route::middleware([ClientKeyMiddleware::class])

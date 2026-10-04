@@ -9,55 +9,53 @@ use RuntimeException;
 class OpenAiService
 {
     private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-    private const MODEL = 'gpt-4o-mini';
+    private const DEFAULT_MODEL = 'gpt-5-mini';
+    private const TIMEOUT_SECONDS = 180;
 
     public function requestJson(string $systemPrompt, string $userPrompt): array
     {
-        return $this->fetchJson($systemPrompt, $userPrompt);
+        return $this->fetchJson($systemPrompt, $userPrompt, ['type' => 'json_object']);
     }
 
-    public function generateTicket(string $systemPrompt, string $userPrompt): array
-    {
-        $parsed = $this->fetchJson($systemPrompt, $userPrompt);
-
-        $description = $parsed['description'] ?? null;
-        if (!is_string($description) || trim($description) === '') {
-            $fallback = $this->extractBodyFromPrompt($userPrompt);
-            if ($fallback === '') {
-                $fallback = 'Description could not be generated automatically.';
-            }
-            $description = $fallback;
-        }
-
-        if (is_string($description)) {
-            $parsed['description'] = $this->ensureDescriptionSections(
-                $description,
-                (string) ($parsed['summary'] ?? ''),
-                $userPrompt
-            );
-        }
-
-        return $parsed;
+    /**
+     * Request a response that is guaranteed to match the given JSON schema (OpenAI structured outputs).
+     */
+    public function requestStructured(
+        string $systemPrompt,
+        string $userPrompt,
+        string $schemaName,
+        array $schema
+    ): array {
+        return $this->fetchJson($systemPrompt, $userPrompt, [
+            'type' => 'json_schema',
+            'json_schema' => [
+                'name' => $schemaName,
+                'strict' => true,
+                'schema' => $schema,
+            ],
+        ]);
     }
 
-    private function fetchJson(string $systemPrompt, string $userPrompt): array
+    private function fetchJson(string $systemPrompt, string $userPrompt, array $responseFormat): array
     {
-        $apiKey = env('OPENAI_API_KEY') ?: config('tickets.openai_key');
+        $apiKey = config('tickets.openai_key');
 
         if (!is_string($apiKey) || $apiKey === '') {
             throw new RuntimeException('OPENAI_API_KEY is not set.');
         }
 
+        $model = config('tickets.openai_model') ?: self::DEFAULT_MODEL;
+
         $response = Http::withToken($apiKey)
             ->acceptJson()
+            ->timeout(self::TIMEOUT_SECONDS)
             ->post(self::ENDPOINT, [
-                'model' => self::MODEL,
+                'model' => $model,
                 'messages' => [
                     ['role' => 'system', 'content' => $systemPrompt],
                     ['role' => 'user', 'content' => $userPrompt],
                 ],
-                'temperature' => 0.2,
-                'response_format' => ['type' => 'json_object'],
+                'response_format' => $responseFormat,
             ])
             ->throw();
 
@@ -66,7 +64,12 @@ class OpenAiService
             throw new RuntimeException('OpenAI response body was not valid JSON.');
         }
 
-        $content = $body['choices'][0]['message']['content'] ?? null;
+        $message = $body['choices'][0]['message'] ?? [];
+        if (is_string($message['refusal'] ?? null) && $message['refusal'] !== '') {
+            throw new RuntimeException('OpenAI refused the request: ' . $message['refusal']);
+        }
+
+        $content = $message['content'] ?? null;
         if (!is_string($content) || trim($content) === '') {
             throw new RuntimeException('OpenAI response content was empty.');
         }
@@ -107,76 +110,5 @@ class OpenAiService
         }
 
         return $trimmed;
-    }
-
-    private function extractBodyFromPrompt(string $userPrompt): string
-    {
-        if (preg_match("/Body:\\s*\\n(.*?)(?:\\n\\nThread URL:|\\z)/s", $userPrompt, $matches)) {
-            return trim($matches[1]);
-        }
-
-        return '';
-    }
-
-    private function ensureDescriptionSections(
-        string $description,
-        string $summary,
-        string $userPrompt
-    ): string {
-        $type = $this->detectType($summary, $userPrompt);
-        if ($type === null) {
-            return $description;
-        }
-
-        $required = $type === 'spike'
-            ? ['Context', 'Questions to Answer', 'Unknowns', 'References']
-            : ['Context', 'Expected Behavior', 'Acceptance Criteria', 'References'];
-
-        $updated = $description;
-        $bodyFallback = $this->extractBodyFromPrompt($userPrompt);
-        $threadUrl = $this->extractThreadUrlFromPrompt($userPrompt);
-        $contextFallback = $bodyFallback !== '' ? $bodyFallback : 'Context not provided.';
-
-        foreach ($required as $section) {
-            if (stripos($updated, $section) !== false) {
-                continue;
-            }
-            $sectionContent = 'Details not provided.';
-            if ($section === 'Context') {
-                $sectionContent = $contextFallback;
-            } elseif ($section === 'References') {
-                $sectionContent = $threadUrl !== '' ? $threadUrl : 'None.';
-            }
-            $updated .= "\n\n{$section}:\n{$sectionContent}";
-        }
-
-        return $updated;
-    }
-
-    private function detectType(string $summary, string $userPrompt): ?string
-    {
-        if (stripos($summary, '[Spike]') === 0) {
-            return 'spike';
-        }
-        if (stripos($summary, '[Task]') === 0) {
-            return 'task';
-        }
-        if (stripos($userPrompt, 'Create a SPIKE ticket') !== false) {
-            return 'spike';
-        }
-        if (stripos($userPrompt, 'Create a TASK ticket') !== false) {
-            return 'task';
-        }
-
-        return null;
-    }
-
-    private function extractThreadUrlFromPrompt(string $userPrompt): string
-    {
-        if (preg_match("/Thread URL:\\s*\\n(.*)$/s", $userPrompt, $matches)) {
-            return trim($matches[1]);
-        }
-
-        return '';
     }
 }

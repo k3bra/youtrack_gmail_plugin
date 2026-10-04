@@ -217,6 +217,8 @@
     header.appendChild(minimizeButton);
 
     let currentMode = "manual";
+    let draftLabels = [];
+    let draftEmail = null;
 
     const modeWrap = document.createElement("div");
     modeWrap.style.display = "inline-flex";
@@ -226,7 +228,7 @@
 
     const manualButton = document.createElement("button");
     manualButton.type = "button";
-    manualButton.textContent = "✍️ Manual";
+    manualButton.textContent = "✍️ Ticket";
     manualButton.style.border = "none";
     manualButton.style.borderRight = "1px solid #dadce0";
     manualButton.style.padding = "6px 10px";
@@ -259,7 +261,7 @@
 
     const descriptionInput = document.createElement("textarea");
     descriptionInput.placeholder = "Description";
-    descriptionInput.rows = 6;
+    descriptionInput.rows = 14;
     descriptionInput.style.padding = "8px";
     descriptionInput.style.border = "1px solid #dadce0";
     descriptionInput.style.borderRadius = "6px";
@@ -276,7 +278,8 @@
 
     const email = extractEmail();
     const aiHelper = document.createElement("div");
-    aiHelper.textContent = "Edit the email content before generating.";
+    aiHelper.textContent =
+      "Edit the email content, then generate a draft. You can review and edit it before the ticket is created.";
     aiHelper.style.fontSize = "12px";
     aiHelper.style.color = "#5f6368";
 
@@ -402,7 +405,7 @@
       setFloatingVisible(true);
     }
 
-    function setLoading(isLoading) {
+    function setLoading(isLoading, loadingText) {
       submitButton.disabled = isLoading;
       cancelButton.disabled = isLoading;
       minimizeButton.disabled = isLoading;
@@ -414,7 +417,7 @@
       submitButton.style.opacity = isLoading ? "0.7" : "1";
       cancelButton.style.opacity = isLoading ? "0.7" : "1";
       minimizeButton.style.opacity = isLoading ? "0.7" : "1";
-      submitButton.textContent = isLoading ? "Creating..." : "Create Ticket";
+      submitButton.textContent = isLoading ? loadingText : submitLabel();
       submitButton.style.cursor = isLoading ? "not-allowed" : "pointer";
       cancelButton.style.cursor = isLoading ? "not-allowed" : "pointer";
       minimizeButton.style.cursor = isLoading ? "not-allowed" : "pointer";
@@ -439,6 +442,10 @@
       status.appendChild(link);
     }
 
+    function submitLabel() {
+      return currentMode === "manual" ? "Create Ticket" : "✨ Generate draft";
+    }
+
     function setMode(mode) {
       currentMode = mode;
       const isManual = currentMode === "manual";
@@ -450,6 +457,7 @@
       aiButton.style.color = isManual ? "#3c4043" : "#1a73e8";
       manualButton.setAttribute("aria-pressed", isManual ? "true" : "false");
       aiButton.setAttribute("aria-pressed", isManual ? "false" : "true");
+      submitButton.textContent = submitLabel();
       updateMinimizedText();
     }
 
@@ -503,69 +511,96 @@
         return;
       }
 
-      const mode = currentMode;
-      let payload = null;
-
-      if (mode === "manual") {
-        const summary = summaryInput.value.trim();
-        const description = descriptionInput.value.trim();
-        if (!summary || !description) {
-          setStatusMessage("Summary and description are required.", "error");
-          return;
-        }
-        payload = { type, mode, summary, description };
+      if (currentMode === "manual") {
+        createTicket();
       } else {
-        const latestEmail = extractEmail();
-        const body = aiBodyInput.value.trim();
-        if (!latestEmail) {
-          setStatusMessage("Unable to read email content.", "error");
-          return;
-        }
-        if (!body) {
-          setStatusMessage("Email body is required.", "error");
-          return;
-        }
-        payload = {
-          type,
-          mode,
-          email: {
-            subject: latestEmail.subject,
-            from: latestEmail.from,
-            body,
-            threadUrl: latestEmail.threadUrl
-          }
-        };
+        generateDraft();
+      }
+    });
+
+    function createTicket() {
+      const summary = summaryInput.value.trim();
+      const description = descriptionInput.value.trim();
+      if (!summary || !description) {
+        setStatusMessage("Summary and description are required.", "error");
+        return;
       }
 
-      setLoading(true);
+      const payload = { type, mode: "manual", summary, description };
+      if (draftLabels.length > 0) {
+        payload.labels = draftLabels;
+      }
+      if (draftEmail) {
+        payload.email = draftEmail;
+      }
+
+      setLoading(true, "Creating...");
       setStatusMessage("Creating ticket...", "info");
 
-      chrome.runtime.sendMessage(
-        { action: "create-ticket", payload },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            setStatusMessage(chrome.runtime.lastError.message, "error");
-            setLoading(false);
-            return;
-          }
+      sendToBackground("create-ticket", payload, (response) => {
+        setStatusSuccess(response.issueId, response.url);
+      });
+    }
 
-          if (!response) {
-            setStatusMessage("No response from background.", "error");
-            setLoading(false);
-            return;
-          }
+    function generateDraft() {
+      const latestEmail = extractEmail();
+      const body = aiBodyInput.value.trim();
+      if (!latestEmail) {
+        setStatusMessage("Unable to read email content.", "error");
+        return;
+      }
+      if (!body) {
+        setStatusMessage("Email body is required.", "error");
+        return;
+      }
 
-          if (response.ok) {
-            setStatusSuccess(response.issueId, response.url);
-            setLoading(false);
-            return;
-          }
+      const email = {
+        subject: latestEmail.subject,
+        from: latestEmail.from,
+        body,
+        threadUrl: latestEmail.threadUrl
+      };
 
-          setStatusMessage(response.error || "Request failed.", "error");
-          setLoading(false);
+      setLoading(true, "Generating...");
+      setStatusMessage("Generating draft with AI...", "info");
+
+      sendToBackground("preview-ticket", { type, email }, (response) => {
+        summaryInput.value = response.summary;
+        descriptionInput.value = response.description;
+        draftLabels = response.labels || [];
+        draftEmail = email;
+        setMode("manual");
+        const labelText =
+          draftLabels.length > 0 ? ` Labels: ${draftLabels.join(", ")}.` : "";
+        setStatusMessage(
+          `Draft ready. Review and edit it, then click Create Ticket.${labelText}`,
+          "info"
+        );
+      });
+    }
+
+    function sendToBackground(action, payload, onSuccess) {
+      chrome.runtime.sendMessage({ action, payload }, (response) => {
+        setLoading(false);
+
+        if (chrome.runtime.lastError) {
+          setStatusMessage(chrome.runtime.lastError.message, "error");
+          return;
         }
-      );
-    });
+
+        if (!response) {
+          setStatusMessage("No response from background.", "error");
+          return;
+        }
+
+        if (!response.ok) {
+          setStatusMessage(response.error || "Request failed.", "error");
+          return;
+        }
+
+        onSuccess(response);
+      });
+    }
 
     Object.assign(modalState, {
       type,

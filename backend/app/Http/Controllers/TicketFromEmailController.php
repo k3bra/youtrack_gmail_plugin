@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Tickets\CreateTicketFromEmailAction;
+use App\Actions\Tickets\PreviewTicketFromEmailAction;
 use App\Services\TicketGeneratorService;
 use App\Services\YouTrackService;
 use Illuminate\Http\JsonResponse;
@@ -17,5 +18,13 @@ class TicketFromEmailController extends Controller
         YouTrackService $youTrackService
     ): JsonResponse {
         return $action->handle($request, $ticketGenerator, $youTrackService);
+    }
+
+    public function preview(
+        Request $request,
+        PreviewTicketFromEmailAction $action,
+        TicketGeneratorService $ticketGenerator
+    ): JsonResponse {
+        return $action->handle($request, $ticketGenerator);
     }
 }

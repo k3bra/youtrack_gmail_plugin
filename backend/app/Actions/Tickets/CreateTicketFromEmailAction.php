@@ -28,6 +28,9 @@ class CreateTicketFromEmailAction
         if ($mode === 'manual') {
             $rules['summary'] = 'required|string';
             $rules['description'] = 'required|string';
+            $rules['labels'] = 'nullable|array';
+            $rules['labels.*'] = 'string';
+            $rules['email'] = 'nullable|array';
         } elseif ($mode === 'email') {
             $rules['email.subject'] = 'required|string';
             $rules['email.body'] = 'required|string';
@@ -110,13 +113,14 @@ class CreateTicketFromEmailAction
     private function normalizePayload(array $payload, string $mode): array
     {
         if ($mode === 'manual') {
+            // Drafts reviewed in the extension carry the source email, so keep it for the record.
             return [
                 'type' => $payload['type'] ?? null,
                 'email' => [
-                    'subject' => $payload['summary'] ?? null,
-                    'from' => 'manual',
-                    'body' => $payload['description'] ?? null,
-                    'threadUrl' => null,
+                    'subject' => data_get($payload, 'email.subject') ?? $payload['summary'] ?? null,
+                    'from' => data_get($payload, 'email.from') ?? 'manual',
+                    'body' => data_get($payload, 'email.body') ?? $payload['description'] ?? null,
+                    'threadUrl' => data_get($payload, 'email.threadUrl'),
                 ],
             ];
         }

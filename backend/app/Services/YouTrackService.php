@@ -10,8 +10,8 @@ class YouTrackService
 {
     public function fetchIssueStatus(string $issueId): ?string
     {
-        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
-        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
 
         if (!is_string($baseUrl) || $baseUrl === '') {
             throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
@@ -64,9 +64,9 @@ class YouTrackService
         array $customFields = []
     ): array
     {
-        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
-        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
-        $projectId = env('YOUTRACK_PROJECT_ID') ?: config('tickets.youtrack_project_id');
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
+        $projectId = config('tickets.youtrack_project_id');
 
         if (!is_string($baseUrl) || $baseUrl === '') {
             throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
@@ -125,8 +125,8 @@ class YouTrackService
 
     public function updateIssueDescription(string $issueId, string $description): void
     {
-        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
-        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
 
         if (!is_string($baseUrl) || $baseUrl === '') {
             throw new RuntimeException('YOUTRACK_BASE_URL is not set.');

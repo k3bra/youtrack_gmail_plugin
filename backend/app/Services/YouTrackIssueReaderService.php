@@ -12,8 +12,8 @@ class YouTrackIssueReaderService
 
     public function fetchIssue(string $issueId): array
     {
-        $baseUrl = env('YOUTRACK_BASE_URL') ?: config('tickets.youtrack_base_url');
-        $token = env('YOUTRACK_TOKEN') ?: config('tickets.youtrack_token');
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
 
         if (!is_string($baseUrl) || $baseUrl === '') {
             throw new RuntimeException('YOUTRACK_BASE_URL is not set.');

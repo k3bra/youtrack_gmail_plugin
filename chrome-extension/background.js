@@ -1,12 +1,21 @@
-const BACKEND_URL = "http://localhost:8000/api/tickets/from-email";
+const BACKEND_BASE_URL = "http://localhost:8000/api/tickets";
 const CLIENT_KEY = "79522295879337155423933099952363QA";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.action !== "create-ticket") {
+  if (!message) {
     return;
   }
 
-  handleCreateTicket(message.payload)
+  let handler = null;
+  if (message.action === "create-ticket") {
+    handler = handleCreateTicket;
+  } else if (message.action === "preview-ticket") {
+    handler = handlePreviewTicket;
+  } else {
+    return;
+  }
+
+  handler(message.payload)
     .then((result) => sendResponse(result))
     .catch((error) => {
       sendResponse({ ok: false, error: error.message || "Request failed." });
@@ -16,10 +25,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleCreateTicket(payload) {
-  const response = await fetch(BACKEND_URL, {
+  const data = await postJson(`${BACKEND_BASE_URL}/from-email`, payload);
+
+  if (!data || !data.issueId || !data.url) {
+    throw new Error("Backend response missing issue data.");
+  }
+
+  return { ok: true, issueId: data.issueId, url: data.url };
+}
+
+async function handlePreviewTicket(payload) {
+  const data = await postJson(`${BACKEND_BASE_URL}/preview`, payload);
+
+  if (!data || !data.summary || !data.description) {
+    throw new Error("Backend response missing draft data.");
+  }
+
+  return {
+    ok: true,
+    summary: data.summary,
+    description: data.description,
+    labels: Array.isArray(data.labels) ? data.labels : []
+  };
+}
+
+async function postJson(url, payload) {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-Client-Key": CLIENT_KEY
     },
     body: JSON.stringify(payload)
@@ -38,13 +73,10 @@ async function handleCreateTicket(payload) {
 
   if (!response.ok) {
     const message =
-      (data && data.error) || `Backend error (${response.status}).`;
+      (data && (data.error || data.message)) ||
+      `Backend error (${response.status}).`;
     throw new Error(message);
   }
 
-  if (!data || !data.issueId || !data.url) {
-    throw new Error("Backend response missing issue data.");
-  }
-
-  return { ok: true, issueId: data.issueId, url: data.url };
+  return data;
 }
