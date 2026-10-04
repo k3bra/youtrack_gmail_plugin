@@ -5,10 +5,6 @@
   const MODAL_ID = "yt-ticket-modal";
   const OVERLAY_ID = "yt-ticket-overlay";
   const MINIMIZED_ID = "yt-ticket-minimized";
-  const PANEL_WIDTH = "240px";
-  const PANEL_RADIUS = "10px";
-  const PANEL_BORDER = "1px solid #dadce0";
-  const PANEL_SHADOW = "0 2px 6px rgba(60, 64, 67, 0.15)";
   // Used until the backend returns the project's actual Priority values.
   const DEFAULT_PRIORITIES = ["Highest", "High", "Medium"];
   // Images smaller than this on either side are treated as logos, icons or tracking pixels.
@@ -67,60 +63,163 @@
     }
   }
 
+  // Terminal look in YouTrack colours: blue = actions/selection, pink = prompts/headings, purple = flags/tags.
+  const STYLE_ID = "ytx-styles";
+  const FONT_LINK_ID = "ytx-font";
+  const STYLES = `
+.ytx, .ytx * { box-sizing: border-box; }
+.ytx { color-scheme: dark; font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, ui-monospace, monospace; font-size: 13px; line-height: 1.55; color: #D7D9DE; -webkit-font-smoothing: antialiased; text-align: left; }
+.ytx button, .ytx input, .ytx textarea { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; margin: 0; }
+.ytx button { cursor: pointer; background: transparent; border: 1px solid #45474F; border-radius: 0; padding: 2px 10px; color: #2EA8FF; }
+.ytx button:disabled { cursor: not-allowed; opacity: 0.5; }
+.ytx button:focus-visible, .ytx input:focus-visible, .ytx textarea:focus-visible { outline: 2px solid #2EA8FF; outline-offset: 1px; }
+.ytx a { color: #2EA8FF; }
+.ytx a:hover { color: #8FD0FF; }
+.ytx .ytx-dim { color: #6A6D75; }
+.ytx .ytx-muted { color: #9A9EA6; }
+.ytx .ytx-prompt { color: #FF4F9A; }
+.ytx .ytx-flag { color: #A796FF; }
+.ytx .ytx-badge { display: inline-flex; flex: 0 0 auto; width: 20px; height: 20px; align-items: center; justify-content: center; background: #FF318C; color: #0B0D10; font-weight: 700; font-size: 10px; box-shadow: 3px 3px 0 #6B57FF; }
+
+.ytx-overlay { position: fixed; inset: 0; z-index: 10001; display: flex; align-items: center; justify-content: center; background: rgba(5, 6, 8, 0.6); }
+.ytx-window { width: min(94vw, 680px); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; background: #16171B; border: 1px solid #34363D; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5); }
+.ytx-titlebar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; background: #1E1F24; border-bottom: 1px solid #34363D; color: #9A9EA6; }
+.ytx-titlebar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ytx .ytx-titlebar button { border-color: #34363D; }
+.ytx-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 18px 22px; }
+.ytx-body > * { flex-shrink: 0; }
+.ytx-cmd { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ytx .ytx-chip { border-color: #45474F; }
+.ytx .ytx-chip[aria-pressed="true"] { background: #2EA8FF; border-color: #2EA8FF; color: #0B0D10; font-weight: 700; }
+.ytx-tabs { display: flex; border-bottom: 1px solid #34363D; }
+.ytx .ytx-tab { border: none; border-bottom: 2px solid transparent; padding: 6px 14px; color: #9A9EA6; }
+.ytx .ytx-tab[aria-selected="true"] { color: #F4F5F7; border-bottom-color: #FF4F9A; }
+.ytx-section { display: flex; flex-direction: column; gap: 14px; }
+.ytx-field { display: flex; flex-direction: column; gap: 6px; }
+.ytx-inputline { display: flex; align-items: baseline; gap: 8px; padding-bottom: 6px; border-bottom: 1px dashed #45474F; }
+.ytx .ytx-inputline input { flex: 1 1 auto; min-width: 0; padding: 0; background: transparent; border: none; outline: none; color: #F4F5F7; }
+.ytx-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ytx .ytx-fieldset { min-width: 0; margin: 0; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 2px; border: 1px solid #34363D; }
+.ytx .ytx-fieldset legend { padding: 0 6px; color: #A796FF; }
+.ytx-radio { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.ytx .ytx-radio input { margin: 0; accent-color: #2EA8FF; }
+.ytx .ytx-radio input:checked + span { color: #F4F5F7; }
+.ytx .ytx-code { width: 100%; padding: 12px 14px; background: #1B1C21; border: 1px solid #34363D; color: #D7D9DE; outline: none; resize: vertical; tab-size: 2; }
+.ytx .ytx-code::placeholder, .ytx .ytx-inputline input::placeholder { color: #6A6D75; }
+.ytx-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ytx-file { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px; border: 1px solid #45474F; cursor: pointer; transition: opacity 0.15s; }
+.ytx-file[data-checked="true"] { border-color: #2EA8FF; }
+.ytx-file[data-checked="false"] { opacity: 0.45; }
+.ytx .ytx-file input { flex: 0 0 auto; margin: 0; accent-color: #2EA8FF; }
+.ytx .ytx-file img { display: block; flex: 0 0 auto; width: 72px; height: 48px; object-fit: cover; border: 1px solid #45474F; }
+.ytx-file-meta { display: flex; flex-direction: column; min-width: 0; }
+.ytx-file-name { color: #F4F5F7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ytx-log { display: flex; flex-direction: column; gap: 4px; }
+.ytx-log:empty { display: none; }
+.ytx-tag { display: inline-block; margin-right: 8px; padding: 0 6px; font-weight: 700; color: #0B0D10; }
+.ytx-tag-ok { background: #2EA8FF; }
+.ytx-tag-err { background: #FF6B6B; }
+.ytx-tag-warn { background: #FFB454; }
+.ytx-tag-info { background: #45474F; color: #F4F5F7; }
+.ytx-warnbox { padding: 8px 10px; border: 1px solid #FFB454; background: #2A2218; color: #FFD9A8; }
+.ytx-reply { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px dashed #45474F; }
+.ytx-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ytx .ytx-btn { min-height: 40px; padding: 8px 14px; }
+.ytx .ytx-btn-primary { background: #2EA8FF; border-color: #2EA8FF; color: #0B0D10; font-weight: 700; }
+.ytx .ytx-btn-warn { background: #FFB454; border-color: #FFB454; color: #0B0D10; font-weight: 700; }
+.ytx-footer { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; background: #1E1F24; border-top: 1px solid #34363D; }
+.ytx-cursor { display: inline-block; width: 0.6em; background: #2EA8FF; animation: ytx-blink 1s steps(1) infinite; }
+@keyframes ytx-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.ytx-preview { position: fixed; display: none; z-index: 10002; pointer-events: none; object-fit: contain; background: #16171B; border: 1px solid #2EA8FF; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5); }
+.ytx-launcher { position: fixed; bottom: 24px; left: 24px; z-index: 9999; width: 240px; display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; background: #16171B; border: 1px solid #34363D; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.ytx-launcher-handle { display: flex; align-items: center; gap: 10px; color: #9A9EA6; font-size: 12px; cursor: move; user-select: none; }
+.ytx-launcher-actions { display: flex; gap: 6px; }
+.ytx .ytx-launcher-actions button { flex: 1 1 0; padding: 6px 8px; }
+.ytx .ytx-launcher-actions button:hover { background: #2EA8FF; border-color: #2EA8FF; color: #0B0D10; }
+.ytx-mini { position: fixed; left: 24px; bottom: 24px; z-index: 10001; width: 260px; display: none; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #16171B; border: 1px solid #34363D; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); cursor: pointer; }
+@media (max-width: 560px) { .ytx-grid2, .ytx-files { grid-template-columns: minmax(0, 1fr); } .ytx-footer > .ytx-dim { display: none; } .ytx-footer { justify-content: flex-end; } }
+`;
+
+  function ensureStyles() {
+    if (!document.getElementById(FONT_LINK_ID)) {
+      // If Gmail's CSP blocks Google Fonts, the stack falls back to the system monospace font.
+      const font = document.createElement("link");
+      font.id = FONT_LINK_ID;
+      font.rel = "stylesheet";
+      font.href = "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap";
+      document.head.appendChild(font);
+    }
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = STYLE_ID;
+      style.textContent = STYLES;
+      document.head.appendChild(style);
+    }
+  }
+
+  // Small DOM builder: h("div", "class", { text, title, attrs: {...}, ...props }, [children]).
+  function h(tag, className, props = {}, children = []) {
+    const node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    Object.entries(props).forEach(([key, value]) => {
+      if (key === "text") {
+        node.textContent = value;
+      } else if (key === "attrs") {
+        Object.entries(value).forEach(([name, attrValue]) => node.setAttribute(name, attrValue));
+      } else {
+        node[key] = value;
+      }
+    });
+    children.forEach((child) => {
+      if (child === null || child === undefined || child === false) {
+        return;
+      }
+      node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+    });
+    return node;
+  }
+
+  function badge() {
+    return h("span", "ytx-badge", { text: "YT", attrs: { "aria-hidden": "true" } });
+  }
+
   function ensureButtons() {
     if (document.getElementById(WRAPPER_ID)) {
       return;
     }
+    ensureStyles();
 
-    const wrapper = document.createElement("div");
-    wrapper.id = WRAPPER_ID;
-    wrapper.className = "yt-ext-actions";
-    wrapper.style.display = "flex";
-    wrapper.style.flexDirection = "column";
-    wrapper.style.alignItems = "stretch";
-    wrapper.style.gap = "6px";
-    wrapper.style.padding = "6px 8px 8px";
-    wrapper.style.background = "#fff";
-    wrapper.style.border = PANEL_BORDER;
-    wrapper.style.borderRadius = PANEL_RADIUS;
-    wrapper.style.boxShadow = PANEL_SHADOW;
-    wrapper.style.position = "fixed";
-    wrapper.style.bottom = "24px";
-    wrapper.style.left = "24px";
-    wrapper.style.zIndex = "9999";
-    wrapper.style.width = PANEL_WIDTH;
+    const dragHandle = h("div", "ytx-launcher-handle", { title: "Drag to move" }, [
+      badge(),
+      h("span", "", { text: "yt-ticket" }),
+      h("span", "ytx-dim", { text: "~/gmail" })
+    ]);
 
-    const dragHandle = document.createElement("div");
-    dragHandle.style.width = "100%";
-    dragHandle.style.height = "10px";
-    dragHandle.style.background = "#f1f3f4";
-    dragHandle.style.borderRadius = "6px 6px 4px 4px";
-    dragHandle.style.flexShrink = "0";
-    dragHandle.style.cursor = "move";
+    const container = h("div", "ytx-launcher-actions", { id: CONTAINER_ID }, [
+      launcherButton("task"),
+      launcherButton("spike")
+    ]);
 
-    const container = document.createElement("div");
-    container.id = CONTAINER_ID;
-    container.style.display = "inline-flex";
-    container.style.gap = "4px";
-    container.style.alignItems = "center";
-
-    const taskButton = createButton("Create Task", "task");
-    const spikeButton = createButton("Create Spike", "spike");
-    container.appendChild(taskButton);
-    container.appendChild(spikeButton);
-
-    const status = document.createElement("div");
-    status.id = STATUS_ID;
-    status.style.fontSize = "12px";
-    status.style.color = "#5f6368";
-    status.style.marginLeft = "6px";
-
-    wrapper.appendChild(dragHandle);
-    wrapper.appendChild(container);
-    wrapper.appendChild(status);
+    const wrapper = h("div", "ytx ytx-launcher", { id: WRAPPER_ID }, [
+      dragHandle,
+      container,
+      h("div", "ytx-muted", { id: STATUS_ID })
+    ]);
 
     document.body.appendChild(wrapper);
     enableDragging(wrapper, dragHandle);
+  }
+
+  function launcherButton(type) {
+    const button = h("button", "", {
+      type: "button",
+      text: `+ ${type}`,
+      title: `Create a ${type} from this email`
+    });
+    button.addEventListener("click", () => openModal(type));
+    return button;
   }
 
   function removeWrapper() {
@@ -138,26 +237,52 @@
     wrapper.style.display = visible ? "flex" : "none";
   }
 
-  function createButton(label, type) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.className = "T-I J-J5-Ji";
-    button.style.height = "28px";
-    button.style.lineHeight = "28px";
-    button.style.padding = "0 8px";
-    button.style.fontSize = "12px";
-    button.style.minWidth = "auto";
+  // A fieldset of radio buttons with the same small API the form needs (value, number, disabled).
+  function createRadioGroup(name, legendText) {
+    const list = h("div", "");
+    const fieldset = h("fieldset", "ytx-fieldset", {}, [h("legend", "", { text: legendText }), list]);
+    let inputs = [];
 
-    button.addEventListener("click", () => handleClick(type));
-    return button;
+    return {
+      fieldset,
+      setOptions(options) {
+        const previous = this.value;
+        list.textContent = "";
+        inputs = options.map((option) => {
+          const input = h("input", "", { type: "radio", name, value: option.value });
+          if (option.number !== undefined) {
+            input.dataset.number = String(option.number);
+          }
+          list.appendChild(
+            h("label", "ytx-radio", { title: option.title || "" }, [
+              input,
+              h("span", "", {}, [option.label, option.hint ? h("span", "ytx-flag", { text: ` ${option.hint}` }) : null])
+            ])
+          );
+          return input;
+        });
+        const selected = inputs.find((input) => input.value === previous) || inputs[0];
+        if (selected) {
+          selected.checked = true;
+        }
+      },
+      get value() {
+        const checked = inputs.find((input) => input.checked);
+        return checked ? checked.value : "";
+      },
+      get number() {
+        const checked = inputs.find((input) => input.checked);
+        return checked && checked.dataset.number ? Number(checked.dataset.number) : null;
+      },
+      set disabled(isDisabled) {
+        inputs.forEach((input) => {
+          input.disabled = isDisabled;
+        });
+      }
+    };
   }
 
-  function handleClick(type) {
-    openModal(type);
-  }
-
-  function openModal(type) {
+  function openModal(initialType) {
     if (modalState) {
       if (modalState.isMinimized && modalState.restore) {
         modalState.restore();
@@ -165,475 +290,233 @@
       return;
     }
 
+    ensureStyles();
     modalState = { isMinimized: false };
     setFloatingVisible(false);
 
-    const overlay = document.createElement("div");
-    overlay.id = OVERLAY_ID;
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.background = "rgba(0, 0, 0, 0.35)";
-    overlay.style.zIndex = "10001";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-
-    const modal = document.createElement("div");
-    modal.id = MODAL_ID;
-    modal.style.background = "#fff";
-    modal.style.border = PANEL_BORDER;
-    modal.style.borderRadius = PANEL_RADIUS;
-    modal.style.boxShadow = "0 6px 18px rgba(60, 64, 67, 0.2)";
-    modal.style.width = "min(92vw, 520px)";
-    modal.style.maxHeight = "85vh";
-    modal.style.overflow = "hidden";
-    modal.style.display = "flex";
-    modal.style.flexDirection = "column";
-
-    const header = document.createElement("div");
-    header.style.display = "flex";
-    header.style.alignItems = "center";
-    header.style.justifyContent = "space-between";
-    header.style.gap = "12px";
-    header.style.background = "#f8f9fa";
-    header.style.padding = "10px 12px";
-    header.style.borderBottom = "1px solid #e0e0e0";
-    header.style.flexShrink = "0";
-
-    const title = document.createElement("div");
-    title.textContent = type === "task" ? "Create Task" : "Create Spike";
-    title.style.fontSize = "16px";
-    title.style.fontWeight = "600";
-    title.style.color = "#202124";
-
-    const minimizeButton = document.createElement("button");
-    minimizeButton.type = "button";
-    minimizeButton.textContent = "-";
-    minimizeButton.title = "Minimize";
-    minimizeButton.setAttribute("aria-label", "Minimize");
-    minimizeButton.style.border = "1px solid #dadce0";
-    minimizeButton.style.background = "#fff";
-    minimizeButton.style.color = "#3c4043";
-    minimizeButton.style.width = "28px";
-    minimizeButton.style.height = "28px";
-    minimizeButton.style.borderRadius = "6px";
-    minimizeButton.style.cursor = "pointer";
-    minimizeButton.style.fontSize = "16px";
-    minimizeButton.style.lineHeight = "26px";
-    minimizeButton.style.textAlign = "center";
-
-    header.appendChild(title);
-    header.appendChild(minimizeButton);
-
+    let type = initialType;
     let currentMode = "manual";
     let draftLabels = [];
     let draftEmail = null;
-
-    const modeWrap = document.createElement("div");
-    modeWrap.style.display = "inline-flex";
-    modeWrap.style.border = "1px solid #dadce0";
-    modeWrap.style.borderRadius = "8px";
-    modeWrap.style.overflow = "hidden";
-    modeWrap.style.alignSelf = "flex-start";
-
-    const manualButton = document.createElement("button");
-    manualButton.type = "button";
-    manualButton.textContent = "✍️ Ticket";
-    manualButton.style.border = "none";
-    manualButton.style.borderRight = "1px solid #dadce0";
-    manualButton.style.padding = "6px 10px";
-    manualButton.style.fontSize = "12px";
-    manualButton.style.cursor = "pointer";
-
-    const aiButton = document.createElement("button");
-    aiButton.type = "button";
-    aiButton.textContent = "🤖 From email";
-    aiButton.style.border = "none";
-    aiButton.style.padding = "6px 10px";
-    aiButton.style.fontSize = "12px";
-    aiButton.style.cursor = "pointer";
-
-    modeWrap.appendChild(manualButton);
-    modeWrap.appendChild(aiButton);
-
-    const manualSection = document.createElement("div");
-    manualSection.style.display = "flex";
-    manualSection.style.flexDirection = "column";
-    manualSection.style.gap = "8px";
-
-    const summaryInput = document.createElement("input");
-    summaryInput.type = "text";
-    summaryInput.placeholder = "Summary";
-    summaryInput.style.padding = "8px";
-    summaryInput.style.border = "1px solid #dadce0";
-    summaryInput.style.borderRadius = "6px";
-    summaryInput.style.fontSize = "13px";
-
-    const descriptionInput = document.createElement("textarea");
-    descriptionInput.placeholder = "Description";
-    descriptionInput.rows = 14;
-    descriptionInput.style.padding = "8px";
-    descriptionInput.style.border = "1px solid #dadce0";
-    descriptionInput.style.borderRadius = "6px";
-    descriptionInput.style.fontSize = "13px";
-    descriptionInput.style.resize = "vertical";
-
-    const priorityRow = document.createElement("label");
-    priorityRow.style.display = "flex";
-    priorityRow.style.alignItems = "center";
-    priorityRow.style.gap = "8px";
-    priorityRow.style.fontSize = "12px";
-    priorityRow.style.color = "#3c4043";
-    priorityRow.textContent = "Priority";
-
-    const prioritySelect = document.createElement("select");
-    prioritySelect.style.padding = "6px 8px";
-    prioritySelect.style.border = "1px solid #dadce0";
-    prioritySelect.style.borderRadius = "6px";
-    prioritySelect.style.fontSize = "13px";
-    prioritySelect.style.background = "#fff";
-    priorityRow.appendChild(prioritySelect);
-    setPriorityOptions(prioritySelect, DEFAULT_PRIORITIES);
-    loadPriorities(prioritySelect);
-
-    const sprintRow = document.createElement("label");
-    sprintRow.style.display = "none";
-    sprintRow.style.alignItems = "center";
-    sprintRow.style.gap = "8px";
-    sprintRow.style.fontSize = "12px";
-    sprintRow.style.color = "#3c4043";
-    sprintRow.textContent = "Sprint";
-
-    const sprintSelect = document.createElement("select");
-    sprintSelect.style.padding = "6px 8px";
-    sprintSelect.style.border = "1px solid #dadce0";
-    sprintSelect.style.borderRadius = "6px";
-    sprintSelect.style.fontSize = "13px";
-    sprintSelect.style.background = "#fff";
-    sprintRow.appendChild(sprintSelect);
-    loadSprintOptions(sprintRow, sprintSelect);
-
-    const optionsRow = document.createElement("div");
-    optionsRow.style.display = "flex";
-    optionsRow.style.flexWrap = "wrap";
-    optionsRow.style.gap = "16px";
-    optionsRow.appendChild(priorityRow);
-    optionsRow.appendChild(sprintRow);
-
-    const imagesSection = document.createElement("div");
-    imagesSection.style.display = "none";
-    imagesSection.style.flexDirection = "column";
-    imagesSection.style.gap = "6px";
-
-    const imagesHeader = document.createElement("div");
-    imagesHeader.style.fontSize = "12px";
-    imagesHeader.style.color = "#3c4043";
-
-    const imagesGrid = document.createElement("div");
-    imagesGrid.style.display = "flex";
-    imagesGrid.style.flexWrap = "wrap";
-    imagesGrid.style.gap = "8px";
-
-    const imagesNote = document.createElement("div");
-    imagesNote.style.fontSize = "11px";
-    imagesNote.style.color = "#5f6368";
-
-    imagesSection.appendChild(imagesHeader);
-    imagesSection.appendChild(imagesGrid);
-    imagesSection.appendChild(imagesNote);
-
     let imageItems = [];
+    const groupId = Date.now();
 
-    const imagePreview = document.createElement("img");
-    imagePreview.alt = "";
-    imagePreview.style.position = "fixed";
-    imagePreview.style.display = "none";
-    imagePreview.style.zIndex = "10002";
-    imagePreview.style.pointerEvents = "none";
-    imagePreview.style.background = "#fff";
-    imagePreview.style.border = "1px solid #dadce0";
-    imagePreview.style.borderRadius = "8px";
-    imagePreview.style.boxShadow = "0 6px 18px rgba(60, 64, 67, 0.3)";
-    imagePreview.style.objectFit = "contain";
-
-    manualSection.appendChild(summaryInput);
-    manualSection.appendChild(optionsRow);
-    manualSection.appendChild(descriptionInput);
-    manualSection.appendChild(imagesSection);
-
-    const aiSection = document.createElement("div");
-    aiSection.style.display = "none";
-    aiSection.style.flexDirection = "column";
-    aiSection.style.gap = "8px";
-
-    const email = extractEmail();
-    const aiHelper = document.createElement("div");
-    aiHelper.textContent =
-      "Edit the email content, then generate a draft. You can review and edit it before the ticket is created.";
-    aiHelper.style.fontSize = "12px";
-    aiHelper.style.color = "#5f6368";
-
-    const aiBodyInput = document.createElement("textarea");
-    aiBodyInput.rows = 10;
-    aiBodyInput.value = email ? email.body : "";
-    aiBodyInput.style.padding = "8px";
-    aiBodyInput.style.border = "1px solid #dadce0";
-    aiBodyInput.style.borderRadius = "6px";
-    aiBodyInput.style.fontSize = "13px";
-    aiBodyInput.style.resize = "vertical";
-
-    aiSection.appendChild(aiHelper);
-    aiSection.appendChild(aiBodyInput);
-
-    const status = document.createElement("div");
-    status.style.fontSize = "12px";
-    status.style.color = "#5f6368";
-
-    const replyPanel = document.createElement("div");
-    replyPanel.style.display = "none";
-    replyPanel.style.flexDirection = "column";
-    replyPanel.style.gap = "8px";
-    replyPanel.style.borderTop = "1px solid #e0e0e0";
-    replyPanel.style.paddingTop = "12px";
-
-    const replyLabel = document.createElement("div");
-    replyLabel.textContent = "Reply to the thread";
-    replyLabel.style.fontSize = "12px";
-    replyLabel.style.fontWeight = "600";
-    replyLabel.style.color = "#3c4043";
-
-    const replyInput = document.createElement("textarea");
-    replyInput.rows = 9;
-    replyInput.style.padding = "8px";
-    replyInput.style.border = "1px solid #dadce0";
-    replyInput.style.borderRadius = "6px";
-    replyInput.style.fontSize = "13px";
-    replyInput.style.resize = "vertical";
-
-    const replyActions = document.createElement("div");
-    replyActions.style.display = "flex";
-    replyActions.style.gap = "8px";
-
-    const replyAllButton = document.createElement("button");
-    replyAllButton.type = "button";
-    replyAllButton.textContent = "Reply all with message";
-    replyAllButton.style.border = "1px solid #1a73e8";
-    replyAllButton.style.background = "#1a73e8";
-    replyAllButton.style.color = "#fff";
-    replyAllButton.style.padding = "6px 12px";
-    replyAllButton.style.borderRadius = "6px";
-    replyAllButton.style.cursor = "pointer";
-    replyAllButton.style.fontSize = "12px";
-
-    const copyButton = document.createElement("button");
-    copyButton.type = "button";
-    copyButton.textContent = "Copy";
-    copyButton.style.border = "1px solid #dadce0";
-    copyButton.style.background = "#fff";
-    copyButton.style.color = "#3c4043";
-    copyButton.style.padding = "6px 12px";
-    copyButton.style.borderRadius = "6px";
-    copyButton.style.cursor = "pointer";
-    copyButton.style.fontSize = "12px";
-
-    const replyStatus = document.createElement("span");
-    replyStatus.style.fontSize = "12px";
-    replyStatus.style.alignSelf = "center";
-
-    replyActions.appendChild(replyAllButton);
-    replyActions.appendChild(copyButton);
-    replyActions.appendChild(replyStatus);
-    replyPanel.appendChild(replyLabel);
-    const replyWarning = document.createElement("div");
-    replyWarning.style.display = "none";
-    replyWarning.style.fontSize = "12px";
-    replyWarning.style.lineHeight = "1.4";
-    replyWarning.style.color = "#7a4100";
-    replyWarning.style.background = "#fef7e0";
-    replyWarning.style.border = "1px solid #f9ab00";
-    replyWarning.style.borderRadius = "6px";
-    replyWarning.style.padding = "8px 10px";
-
-    replyPanel.appendChild(replyInput);
-    replyPanel.appendChild(replyWarning);
-    replyPanel.appendChild(replyActions);
-
-    const actions = document.createElement("div");
-    actions.style.display = "flex";
-    actions.style.justifyContent = "flex-end";
-    actions.style.gap = "8px";
-    actions.style.padding = "12px 16px";
-    actions.style.borderTop = "1px solid #e0e0e0";
-    actions.style.background = "#fff";
-    actions.style.flexShrink = "0";
-
-    const cancelButton = document.createElement("button");
-    cancelButton.type = "button";
-    cancelButton.textContent = "Cancel";
-    cancelButton.style.border = "1px solid #dadce0";
-    cancelButton.style.background = "#fff";
-    cancelButton.style.color = "#3c4043";
-    cancelButton.style.padding = "6px 12px";
-    cancelButton.style.borderRadius = "6px";
-    cancelButton.style.cursor = "pointer";
-    cancelButton.style.fontSize = "12px";
-
-    const submitButton = document.createElement("button");
-    submitButton.type = "button";
-    submitButton.textContent = "Create Ticket";
-    submitButton.style.border = "1px solid #1a73e8";
-    submitButton.style.background = "#1a73e8";
-    submitButton.style.color = "#fff";
-    submitButton.style.padding = "6px 12px";
-    submitButton.style.borderRadius = "6px";
-    submitButton.style.cursor = "pointer";
-    submitButton.style.fontSize = "12px";
-
-    actions.appendChild(cancelButton);
-    actions.appendChild(submitButton);
-
-    const uploadStatus = document.createElement("div");
-    uploadStatus.style.fontSize = "12px";
-    uploadStatus.style.color = "#5f6368";
-
-    // Header and actions stay pinned; only the body scrolls. Body rows must not shrink,
-    // otherwise the browser squashes them (e.g. the mode toggle) instead of scrolling.
-    const body = document.createElement("div");
-    body.style.flex = "1 1 auto";
-    body.style.minHeight = "0";
-    body.style.overflowY = "auto";
-    body.style.padding = "16px";
-    body.style.display = "flex";
-    body.style.flexDirection = "column";
-    body.style.gap = "14px";
-    [modeWrap, manualSection, aiSection, status, uploadStatus, replyPanel].forEach((section) => {
-      section.style.flexShrink = "0";
-      body.appendChild(section);
+    // Title bar
+    const minimizeButton = h("button", "", {
+      type: "button",
+      text: "[_]",
+      title: "Minimize",
+      attrs: { "aria-label": "Minimize" }
     });
+    const titleText = h("span", "");
+    const titlebar = h("div", "ytx-titlebar", {}, [
+      h("div", "ytx-titlebar-left", {}, [badge(), titleText]),
+      minimizeButton
+    ]);
 
-    modal.appendChild(header);
-    modal.appendChild(body);
-    modal.appendChild(actions);
-    overlay.appendChild(modal);
-    overlay.appendChild(imagePreview);
+    // $ yt create --type=task|spike
+    const taskChip = h("button", "ytx-chip", { type: "button", text: "task" });
+    const spikeChip = h("button", "ytx-chip", { type: "button", text: "spike" });
+    const commandLine = h("div", "ytx-cmd", {}, [
+      h("span", "ytx-prompt", { text: "$" }),
+      h("span", "", { text: "yt create" }),
+      h("span", "ytx-flag", { text: "--type=" }),
+      taskChip,
+      spikeChip
+    ]);
+
+    // Tabs: the ticket fields, or the source email used to generate a draft
+    const manualButton = h("button", "ytx-tab", { type: "button", text: "ticket.md", attrs: { role: "tab" } });
+    const aiButton = h("button", "ytx-tab", { type: "button", text: "source.eml + ai", attrs: { role: "tab" } });
+    const tabs = h("div", "ytx-tabs", { attrs: { role: "tablist" } }, [manualButton, aiButton]);
+
+    // Ticket fields
+    const summaryInput = h("input", "", {
+      type: "text",
+      id: `ytx-summary-${groupId}`,
+      placeholder: "one line that says what's wrong"
+    });
+    const summaryField = h("div", "ytx-field", {}, [
+      h("label", "ytx-muted", { text: "# summary", htmlFor: summaryInput.id }),
+      h("div", "ytx-inputline", {}, [h("span", "ytx-prompt", { text: ">" }), summaryInput])
+    ]);
+
+    const priorityGroup = createRadioGroup(`ytx-priority-${groupId}`, "--priority");
+    setPriorityOptions(priorityGroup, DEFAULT_PRIORITIES);
+    loadPriorities(priorityGroup);
+
+    const sprintGroup = createRadioGroup(`ytx-sprint-${groupId}`, "--sprint");
+    sprintGroup.fieldset.style.display = "none";
+    loadSprintOptions(sprintGroup);
+
+    const descriptionInput = h("textarea", "ytx-code", {
+      id: `ytx-description-${groupId}`,
+      rows: 14,
+      placeholder: "## Context\n...",
+      spellcheck: false
+    });
+    const descriptionField = h("div", "ytx-field", {}, [
+      h("label", "ytx-muted", { text: "# description.md", htmlFor: descriptionInput.id }),
+      descriptionInput
+    ]);
+
+    const imagesHeader = h("div", "ytx-muted");
+    const imagesGrid = h("div", "ytx-files");
+    const imagesNote = h("div", "ytx-dim");
+    const imagesSection = h("div", "ytx-field", {}, [imagesHeader, imagesGrid, imagesNote]);
+    imagesSection.style.display = "none";
+
+    const imagePreview = h("img", "ytx-preview", { alt: "" });
+
+    const manualSection = h("div", "ytx-section", {}, [
+      summaryField,
+      h("div", "ytx-grid2", {}, [priorityGroup.fieldset, sprintGroup.fieldset]),
+      descriptionField,
+      imagesSection
+    ]);
+
+    // Source email + AI
+    const email = extractEmail();
+    const aiBodyInput = h("textarea", "ytx-code", {
+      id: `ytx-source-${groupId}`,
+      rows: 14,
+      value: email ? email.body : "",
+      spellcheck: false
+    });
+    const aiSection = h("div", "ytx-field", {}, [
+      h("label", "ytx-muted", {
+        text: "# source.eml (trim it if you like, then generate a draft you can review)",
+        htmlFor: aiBodyInput.id
+      }),
+      aiBodyInput
+    ]);
+
+    // Log lines
+    const status = h("div", "ytx-log", { attrs: { "aria-live": "polite" } });
+    const uploadStatus = h("div", "ytx-log", { attrs: { "aria-live": "polite" } });
+
+    // Reply to the thread
+    const replyInput = h("textarea", "ytx-code", { id: `ytx-reply-${groupId}`, rows: 9 });
+    const replyWarning = h("div", "ytx-warnbox");
+    replyWarning.style.display = "none";
+    const replyAllButton = h("button", "ytx-btn ytx-btn-primary", { type: "button", text: "reply all" });
+    const copyButton = h("button", "ytx-btn", { type: "button", text: "copy" });
+    const replyStatus = h("span", "ytx-muted", { attrs: { "aria-live": "polite" } });
+    const replyPanel = h("div", "ytx-reply", {}, [
+      h("label", "ytx-muted", { text: "# reply.txt (paste into the thread)", htmlFor: replyInput.id }),
+      replyInput,
+      replyWarning,
+      h("div", "ytx-row", {}, [replyAllButton, copyButton, replyStatus])
+    ]);
+    replyPanel.style.display = "none";
+
+    // Footer
+    const cancelButton = h("button", "ytx-btn", { type: "button", text: "[esc] abort" });
+    const submitButton = h("button", "ytx-btn ytx-btn-primary", { type: "button" });
+    const footer = h("div", "ytx-footer", {}, [
+      h("span", "ytx-dim", { text: "no tickets were harmed yet" }),
+      h("div", "ytx-row", {}, [cancelButton, submitButton])
+    ]);
+
+    const body = h("div", "ytx-body", {}, [
+      commandLine,
+      tabs,
+      manualSection,
+      aiSection,
+      status,
+      uploadStatus,
+      replyPanel
+    ]);
+    const modal = h("div", "ytx-window", {
+      id: MODAL_ID,
+      attrs: { role: "dialog", "aria-modal": "true", "aria-label": "Create YouTrack ticket" }
+    }, [titlebar, body, footer]);
+    const overlay = h("div", "ytx ytx-overlay", { id: OVERLAY_ID }, [modal, imagePreview]);
     document.body.appendChild(overlay);
 
-    const minimizedBar = document.createElement("div");
-    minimizedBar.id = MINIMIZED_ID;
-    minimizedBar.style.position = "fixed";
-    minimizedBar.style.left = "24px";
-    minimizedBar.style.bottom = "24px";
-    minimizedBar.style.background = "#f8f9fa";
-    minimizedBar.style.border = PANEL_BORDER;
-    minimizedBar.style.borderRadius = PANEL_RADIUS;
-    minimizedBar.style.boxShadow = PANEL_SHADOW;
-    minimizedBar.style.padding = "4px 8px";
-    minimizedBar.style.width = PANEL_WIDTH;
-    minimizedBar.style.display = "none";
-    minimizedBar.style.alignItems = "center";
-    minimizedBar.style.gap = "8px";
-    minimizedBar.style.justifyContent = "space-between";
-    minimizedBar.style.cursor = "pointer";
-    minimizedBar.style.zIndex = "10001";
-
-    const minimizedLeft = document.createElement("div");
-    minimizedLeft.style.display = "inline-flex";
-    minimizedLeft.style.alignItems = "center";
-    minimizedLeft.style.gap = "6px";
-
-    const minimizedIcon = document.createElement("span");
-    minimizedIcon.textContent = "📝";
-    minimizedIcon.style.fontSize = "13px";
-
-    const minimizedText = document.createElement("span");
-    minimizedText.style.fontSize = "12px";
-    minimizedText.style.color = "#3c4043";
-
-    minimizedLeft.appendChild(minimizedIcon);
-    minimizedLeft.appendChild(minimizedText);
-
-    const minimizedAction = document.createElement("button");
-    minimizedAction.type = "button";
-    minimizedAction.textContent = "⤢";
-    minimizedAction.title = "Open";
-    minimizedAction.setAttribute("aria-label", "Open");
-    minimizedAction.style.border = "none";
-    minimizedAction.style.background = "transparent";
-    minimizedAction.style.color = "#1a73e8";
-    minimizedAction.style.cursor = "pointer";
-    minimizedAction.style.fontSize = "14px";
-
-    minimizedBar.appendChild(minimizedLeft);
-    minimizedBar.appendChild(minimizedAction);
+    // Minimized bar
+    const minimizedText = h("span", "");
+    const minimizedAction = h("button", "", {
+      type: "button",
+      text: "[open]",
+      title: "Open",
+      attrs: { "aria-label": "Open" }
+    });
+    const minimizedBar = h("div", "ytx ytx-mini", { id: MINIMIZED_ID }, [
+      h("div", "ytx-titlebar-left", {}, [badge(), minimizedText]),
+      minimizedAction
+    ]);
     document.body.appendChild(minimizedBar);
 
     const onKeyDown = (event) => {
+      if (modalState && modalState.isMinimized) {
+        return;
+      }
       if (event.key === "Escape") {
         closeModal();
+        return;
+      }
+      // Cmd/Ctrl+Enter runs the main action, but only while typing inside this form.
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && overlay.contains(event.target)) {
+        event.preventDefault();
+        event.stopPropagation();
+        submitButton.click();
       }
     };
 
     function closeModal() {
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", onKeyDown, true);
       imageItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-      if (overlay.parentElement) {
-        overlay.parentElement.removeChild(overlay);
-      }
-      if (minimizedBar.parentElement) {
-        minimizedBar.parentElement.removeChild(minimizedBar);
-      }
+      overlay.remove();
+      minimizedBar.remove();
       modalState = null;
       setFloatingVisible(true);
     }
 
     function setLoading(isLoading, loadingText) {
-      submitButton.disabled = isLoading;
-      cancelButton.disabled = isLoading;
-      minimizeButton.disabled = isLoading;
-      manualButton.disabled = isLoading;
-      aiButton.disabled = isLoading;
+      [submitButton, cancelButton, minimizeButton, manualButton, aiButton, taskChip, spikeChip].forEach((button) => {
+        button.disabled = isLoading;
+      });
       summaryInput.disabled = isLoading;
       descriptionInput.disabled = isLoading;
-      prioritySelect.disabled = isLoading;
-      sprintSelect.disabled = isLoading;
+      aiBodyInput.disabled = isLoading;
+      priorityGroup.disabled = isLoading;
+      sprintGroup.disabled = isLoading;
       imageItems.forEach((item) => {
         item.checkbox.disabled = isLoading;
       });
-      aiBodyInput.disabled = isLoading;
-      submitButton.style.opacity = isLoading ? "0.7" : "1";
-      cancelButton.style.opacity = isLoading ? "0.7" : "1";
-      minimizeButton.style.opacity = isLoading ? "0.7" : "1";
       submitButton.textContent = isLoading ? loadingText : submitLabel();
-      submitButton.style.cursor = isLoading ? "not-allowed" : "pointer";
-      cancelButton.style.cursor = isLoading ? "not-allowed" : "pointer";
-      minimizeButton.style.cursor = isLoading ? "not-allowed" : "pointer";
     }
 
-    function setStatusMessage(message, type) {
-      status.textContent = message;
-      status.style.color = type === "error" ? "#d93025" : "#5f6368";
+    function logLine(target, kind, parts) {
+      const labels = { ok: "OK", err: "ERR", warn: "WARN", info: ".." };
+      target.appendChild(
+        h("div", "", {}, [h("span", `ytx-tag ytx-tag-${kind}`, { text: labels[kind] }), ...parts])
+      );
+    }
+
+    function setStatusMessage(message, kind) {
+      status.textContent = "";
+      logLine(status, kind === "error" ? "err" : "info", [
+        message,
+        kind === "error" ? null : h("span", "ytx-cursor", { text: " ", attrs: { "aria-hidden": "true" } })
+      ]);
     }
 
     function setStatusSuccess(issueId, url, warning) {
       status.textContent = "";
-      status.style.color = "#5f6368";
-      const text = document.createElement("span");
-      text.textContent = `Ticket created: ${issueId} `;
-      const link = document.createElement("a");
-      link.href = url;
-      link.textContent = "Open in YouTrack";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.style.color = "#1a73e8";
-      status.appendChild(text);
-      status.appendChild(link);
+      logLine(status, "ok", [
+        `created ${issueId} → `,
+        h("a", "", { href: url, text: "open in youtrack", target: "_blank", rel: "noopener noreferrer" })
+      ]);
       if (warning) {
-        const warningText = document.createElement("div");
-        warningText.textContent = warning;
-        warningText.style.color = "#b06000";
-        warningText.style.marginTop = "4px";
-        status.appendChild(warningText);
+        logLine(status, "warn", [warning]);
       }
+    }
+
+    function setUploadStatus(kind, message) {
+      uploadStatus.textContent = "";
+      logLine(uploadStatus, kind, [message]);
     }
 
     function showReplyPanel(message) {
@@ -649,39 +532,37 @@
 
       if (external.length === 0) {
         replyWarning.style.display = "none";
-        replyAllButton.textContent = "Reply all with message";
-        replyAllButton.style.background = "#1a73e8";
-        replyAllButton.style.borderColor = "#1a73e8";
+        replyAllButton.textContent = "reply all";
+        replyAllButton.className = "ytx-btn ytx-btn-primary";
         return;
       }
 
       const listed = external.slice(0, 5).join(", ");
       const more = external.length > 5 ? ` and ${external.length - 5} more` : "";
       replyWarning.textContent =
-        `⚠️ This thread includes people outside ${INTERNAL_DOMAINS.join(", ")}: ${listed}${more}. ` +
+        `[WARN] This thread includes people outside ${INTERNAL_DOMAINS.join(", ")}: ${listed}${more}. ` +
         "Reply all would send them this message, including the internal YouTrack link. Check the recipients before sending.";
       replyWarning.style.display = "block";
-      replyAllButton.textContent = "⚠️ Reply all (includes external)";
-      replyAllButton.style.background = "#b06000";
-      replyAllButton.style.borderColor = "#b06000";
+      replyAllButton.textContent = "reply all (includes external!)";
+      replyAllButton.className = "ytx-btn ytx-btn-warn";
     }
 
-    function setReplyStatus(message, type) {
+    function setReplyStatus(message, kind) {
       replyStatus.textContent = message;
-      replyStatus.style.color = type === "error" ? "#d93025" : "#188038";
+      replyStatus.style.color = kind === "error" ? "#FF6B6B" : "#2EA8FF";
     }
 
     copyButton.addEventListener("click", async () => {
       const copied = await copyText(replyInput.value);
       setReplyStatus(
-        copied ? "Copied." : "Copy failed. Select the text and copy it manually.",
+        copied ? "copied." : "copy failed. select the text and copy it manually.",
         copied ? "info" : "error"
       );
     });
 
     replyAllButton.addEventListener("click", async () => {
       replyAllButton.disabled = true;
-      setReplyStatus("Opening Reply all...", "info");
+      setReplyStatus("opening reply all...", "info");
       const result = await insertIntoReplyAll(replyInput.value);
       replyAllButton.disabled = false;
 
@@ -690,11 +571,11 @@
         closeModal();
         return;
       }
-      setReplyStatus(`${result.error} Use Copy and paste it instead.`, "error");
+      setReplyStatus(`${result.error} Use copy and paste it instead.`, "error");
     });
 
     function submitLabel() {
-      return currentMode === "manual" ? "Create Ticket" : "✨ Generate draft";
+      return currentMode === "manual" ? "[⌘⏎] create ticket" : "[⌘⏎] generate draft";
     }
 
     function setMode(mode) {
@@ -702,26 +583,29 @@
       const isManual = currentMode === "manual";
       manualSection.style.display = isManual ? "flex" : "none";
       aiSection.style.display = isManual ? "none" : "flex";
-      manualButton.style.background = isManual ? "#e8f0fe" : "#fff";
-      manualButton.style.color = isManual ? "#1a73e8" : "#3c4043";
-      aiButton.style.background = isManual ? "#fff" : "#e8f0fe";
-      aiButton.style.color = isManual ? "#3c4043" : "#1a73e8";
-      manualButton.setAttribute("aria-pressed", isManual ? "true" : "false");
-      aiButton.setAttribute("aria-pressed", isManual ? "false" : "true");
+      manualButton.setAttribute("aria-selected", isManual ? "true" : "false");
+      aiButton.setAttribute("aria-selected", isManual ? "false" : "true");
       submitButton.textContent = submitLabel();
-      updateMinimizedText();
+      updateTitles();
     }
 
-    function updateMinimizedText() {
-      const typeLabel = type === "task" ? "Task" : "Spike";
-      minimizedText.textContent = `${typeLabel} • Draft`;
+    function setType(nextType) {
+      type = nextType;
+      taskChip.setAttribute("aria-pressed", type === "task" ? "true" : "false");
+      spikeChip.setAttribute("aria-pressed", type === "spike" ? "true" : "false");
+      updateTitles();
+    }
+
+    function updateTitles() {
+      titleText.textContent = `yt-ticket — new ${type} — ${currentMode === "manual" ? "ticket.md" : "source.eml"}`;
+      minimizedText.textContent = `yt-ticket · ${type} · draft`;
     }
 
     function minimizeModal() {
       modalState.isMinimized = true;
       overlay.style.display = "none";
       minimizedBar.style.display = "flex";
-      updateMinimizedText();
+      updateTitles();
       setFloatingVisible(false);
     }
 
@@ -734,18 +618,16 @@
 
     manualButton.addEventListener("click", () => setMode("manual"));
     aiButton.addEventListener("click", () => setMode("ai"));
+    taskChip.addEventListener("click", () => setType("task"));
+    spikeChip.addEventListener("click", () => setType("spike"));
 
     minimizeButton.addEventListener("click", () => {
-      if (minimizeButton.disabled) {
-        return;
+      if (!minimizeButton.disabled) {
+        minimizeModal();
       }
-      minimizeModal();
     });
 
-    minimizedBar.addEventListener("click", () => {
-      restoreModal();
-    });
-
+    minimizedBar.addEventListener("click", () => restoreModal());
     minimizedAction.addEventListener("click", (event) => {
       event.stopPropagation();
       restoreModal();
@@ -773,23 +655,21 @@
       const summary = summaryInput.value.trim();
       const description = descriptionInput.value.trim();
       if (!summary || !description) {
-        setStatusMessage("Summary and description are required.", "error");
+        setStatusMessage("summary and description are required.", "error");
         return;
       }
 
       const payload = { type, mode: "manual", summary, description };
-      if (prioritySelect.value) {
-        payload.priority = prioritySelect.value;
+      if (priorityGroup.value) {
+        payload.priority = priorityGroup.value;
       }
       const sender = findSender();
       if (sender && sender.name) {
         payload.senderName = sender.name;
       }
-
-      const sprintOption = sprintSelect.selectedOptions[0];
-      if (sprintOption && sprintOption.value) {
-        payload.sprint = sprintOption.value;
-        payload.sprintNumber = Number(sprintOption.dataset.number);
+      if (sprintGroup.value) {
+        payload.sprint = sprintGroup.value;
+        payload.sprintNumber = sprintGroup.number;
       }
       if (draftLabels.length > 0) {
         payload.labels = draftLabels;
@@ -802,21 +682,22 @@
       const selectedBytes = selectedImages.reduce((sum, item) => sum + item.blob.size, 0);
       if (selectedBytes > MAX_TOTAL_IMAGE_BYTES) {
         setStatusMessage(
-          `Selected images are ${formatBytes(selectedBytes)}; the limit is ${formatBytes(MAX_TOTAL_IMAGE_BYTES)}. Untick some images.`,
+          `selected images are ${formatBytes(selectedBytes)}; the limit is ${formatBytes(MAX_TOTAL_IMAGE_BYTES)}. untick some images.`,
           "error"
         );
         return;
       }
 
-      setLoading(true, "Creating...");
-      setStatusMessage("Creating ticket...", "info");
+      setLoading(true, "creating...");
+      setStatusMessage("creating ticket in youtrack...", "info");
 
       sendToBackground("create-ticket", payload, (response) => {
         setStatusSuccess(response.issueId, response.url, response.warning);
         // The ticket exists now; prevent creating a duplicate.
         submitButton.disabled = true;
-        submitButton.textContent = "Created";
-        submitButton.style.opacity = "0.7";
+        submitButton.textContent = "[✓] created";
+        taskChip.disabled = true;
+        spikeChip.disabled = true;
         imageItems.forEach((item) => {
           item.checkbox.disabled = true;
         });
@@ -834,8 +715,7 @@
       const failed = [];
 
       for (let i = 0; i < items.length; i++) {
-        uploadStatus.style.color = "#5f6368";
-        uploadStatus.textContent = `Uploading images ${i + 1}/${items.length}...`;
+        setUploadStatus("info", `uploading attachments ${i + 1}/${items.length}...`);
         try {
           uploaded.push(await uploadImage(issueId, items[i]));
         } catch (error) {
@@ -854,18 +734,16 @@
         }
       }
 
-      const messages = [];
+      uploadStatus.textContent = "";
       if (uploaded.length > 0) {
-        messages.push(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} attached.`);
+        logLine(uploadStatus, "ok", [`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} attached.`]);
       }
       if (failed.length > 0) {
-        messages.push(`Not attached: ${failed.join("; ")}.`);
+        logLine(uploadStatus, "err", [`not attached: ${failed.join("; ")}.`]);
       }
       if (finalizeError) {
-        messages.push(`Images were attached but not embedded in the description: ${finalizeError}`);
+        logLine(uploadStatus, "warn", [`attached but not embedded in the description: ${finalizeError}`]);
       }
-      uploadStatus.textContent = messages.join(" ");
-      uploadStatus.style.color = failed.length > 0 || finalizeError ? "#b06000" : "#188038";
     }
 
     async function uploadImage(issueId, item) {
@@ -903,10 +781,11 @@
       }
 
       imagesSection.style.display = "flex";
-      imagesHeader.textContent = "Looking for images in the email...";
+      imagesHeader.textContent = "$ scanning email for images...";
 
       let tooLarge = 0;
       let unreadable = 0;
+      let skipped = 0;
       const seenHashes = new Set();
       const usedNames = new Set();
       const items = [];
@@ -921,6 +800,7 @@
         }
 
         if (!blob.type.startsWith("image/")) {
+          skipped++;
           continue;
         }
         if (blob.size > MAX_IMAGE_BYTES) {
@@ -936,17 +816,21 @@
           continue;
         }
         if (dimensions.width < MIN_IMAGE_SIDE || dimensions.height < MIN_IMAGE_SIDE) {
+          skipped++;
           continue;
         }
 
         const hash = await hashBlob(blob);
         if (seenHashes.has(hash)) {
+          skipped++;
           continue;
         }
         seenHashes.add(hash);
 
         items.push({
           blob,
+          width: dimensions.width,
+          height: dimensions.height,
           name: uniqueImageName(source.name, blob.type, items.length + 1, usedNames),
           previewUrl: URL.createObjectURL(blob)
         });
@@ -964,10 +848,14 @@
         return;
       }
 
-      imagesHeader.textContent =
-        imageItems.length > 0
-          ? `Attach images (${imageItems.length})`
-          : "No images to attach";
+      imagesHeader.textContent = "";
+      imagesHeader.appendChild(h("span", "ytx-prompt", { text: "$ " }));
+      imagesHeader.appendChild(document.createTextNode("ls -lh ./attachments "));
+      imagesHeader.appendChild(
+        h("span", "ytx-dim", {
+          text: `# ${imageItems.length} found${skipped > 0 ? ` · ${skipped} skipped (logos, icons, duplicates)` : ""}`
+        })
+      );
 
       const notes = [];
       if (tooLarge > 0) {
@@ -980,68 +868,28 @@
     }
 
     function renderImageItem(item) {
-      const tile = document.createElement("div");
-      tile.style.display = "flex";
-      tile.style.flexDirection = "column";
-      tile.style.alignItems = "center";
-      tile.style.gap = "2px";
-      tile.style.cursor = "pointer";
-      tile.title = `${item.name} — click to include or exclude`;
-
-      const frame = document.createElement("div");
-      frame.style.position = "relative";
-      frame.style.borderRadius = "6px";
-      frame.style.outlineOffset = "1px";
-
-      const img = document.createElement("img");
-      img.src = item.previewUrl;
-      img.alt = item.name;
-      img.style.display = "block";
-      img.style.height = "72px";
-      img.style.width = "110px";
-      img.style.objectFit = "cover";
-      img.style.border = "1px solid #dadce0";
-      img.style.borderRadius = "6px";
-      img.style.transition = "opacity 0.15s";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = true;
-      checkbox.setAttribute("aria-label", `Attach ${item.name}`);
-      checkbox.style.position = "absolute";
-      checkbox.style.top = "4px";
-      checkbox.style.left = "4px";
-      checkbox.style.margin = "0";
-      checkbox.style.width = "16px";
-      checkbox.style.height = "16px";
-      checkbox.style.cursor = "pointer";
-
-      const size = document.createElement("span");
-      size.textContent = formatBytes(item.blob.size);
-      size.style.fontSize = "11px";
-      size.style.color = "#5f6368";
+      const checkbox = h("input", "", {
+        type: "checkbox",
+        checked: true,
+        attrs: { "aria-label": `Attach ${item.name}` }
+      });
+      const img = h("img", "", { src: item.previewUrl, alt: item.name });
+      const tile = h("label", "ytx-file", { title: `${item.name} — click to include or exclude` }, [
+        checkbox,
+        img,
+        h("span", "ytx-file-meta", {}, [
+          h("span", "ytx-file-name", { text: item.name }),
+          h("span", "ytx-muted", { text: `${formatBytes(item.blob.size)} · ${item.width}x${item.height}` })
+        ])
+      ]);
 
       const syncState = () => {
-        img.style.opacity = checkbox.checked ? "1" : "0.35";
-        frame.style.outline = checkbox.checked ? "2px solid #1a73e8" : "none";
+        tile.dataset.checked = checkbox.checked ? "true" : "false";
       };
-
-      tile.addEventListener("click", (event) => {
-        if (event.target === checkbox || checkbox.disabled) {
-          return;
-        }
-        checkbox.checked = !checkbox.checked;
-        syncState();
-      });
       checkbox.addEventListener("change", syncState);
-
-      img.addEventListener("mouseenter", () => showImagePreview(item.previewUrl, frame));
+      img.addEventListener("mouseenter", () => showImagePreview(item.previewUrl, tile));
       img.addEventListener("mouseleave", hideImagePreview);
 
-      frame.appendChild(img);
-      frame.appendChild(checkbox);
-      tile.appendChild(frame);
-      tile.appendChild(size);
       imagesGrid.appendChild(tile);
       syncState();
 
@@ -1074,11 +922,11 @@
       const latestEmail = extractEmail();
       const body = aiBodyInput.value.trim();
       if (!latestEmail) {
-        setStatusMessage("Unable to read email content.", "error");
+        setStatusMessage("unable to read the email.", "error");
         return;
       }
       if (!body) {
-        setStatusMessage("Email body is required.", "error");
+        setStatusMessage("source email is empty.", "error");
         return;
       }
 
@@ -1089,8 +937,9 @@
         threadUrl: latestEmail.threadUrl
       };
 
-      setLoading(true, "Generating...");
-      setStatusMessage("Generating draft with AI...", "info");
+      const startedAt = Date.now();
+      setLoading(true, "generating...");
+      setStatusMessage("asking the AI for a draft...", "info");
 
       sendToBackground("preview-ticket", { type, email }, (response) => {
         summaryInput.value = response.summary;
@@ -1098,10 +947,11 @@
         draftLabels = response.labels || [];
         draftEmail = email;
         setMode("manual");
-        setStatusMessage(
-          "Draft ready. Review and edit it, then click Create Ticket.",
-          "info"
-        );
+        status.textContent = "";
+        logLine(status, "ok", [
+          `draft generated in ${((Date.now() - startedAt) / 1000).toFixed(1)}s · review it, then ship it `,
+          h("span", "ytx-cursor", { text: " ", attrs: { "aria-hidden": "true" } })
+        ]);
       });
     }
 
@@ -1115,12 +965,12 @@
         }
 
         if (!response) {
-          setStatusMessage("No response from background.", "error");
+          setStatusMessage("no response from background.", "error");
           return;
         }
 
         if (!response.ok) {
-          setStatusMessage(response.error || "Request failed.", "error");
+          setStatusMessage(response.error || "request failed.", "error");
           return;
         }
 
@@ -1129,48 +979,32 @@
     }
 
     Object.assign(modalState, {
-      type,
       overlay,
       modal,
       minimizedBar,
-      manualButton,
-      aiButton,
-      summaryInput,
-      descriptionInput,
-      aiBodyInput,
-      status,
       isMinimized: false,
       restore: restoreModal,
       minimize: minimizeModal,
       close: closeModal
     });
 
+    setType(type);
     setMode(currentMode);
-    document.addEventListener("keydown", onKeyDown);
+    // Capture phase so Cmd/Ctrl+Enter reaches us before Gmail's own shortcuts.
+    document.addEventListener("keydown", onKeyDown, true);
+    summaryInput.focus();
     prepareImages();
   }
 
-  function setPriorityOptions(select, priorities) {
-    const selected = select.value;
-    select.textContent = "";
-
-    const none = document.createElement("option");
-    none.value = "";
-    none.textContent = "None";
-    select.appendChild(none);
-
-    priorities.forEach((priority) => {
-      const option = document.createElement("option");
-      option.value = priority;
-      option.textContent = priority;
-      select.appendChild(option);
-    });
-
-    select.value = priorities.includes(selected) ? selected : "";
+  function setPriorityOptions(group, priorities) {
+    group.setOptions([
+      { value: "", label: "none" },
+      ...priorities.map((priority) => ({ value: priority, label: priority.toLowerCase() }))
+    ]);
   }
 
   // Shown only once the backend confirms the current sprint and/or latest proposal tag.
-  function loadSprintOptions(row, select) {
+  function loadSprintOptions(group) {
     chrome.runtime.sendMessage({ action: "get-sprint-options" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.ok) {
         return;
@@ -1181,7 +1015,8 @@
         options.push({
           value: "current",
           number: response.current.number,
-          label: `Current (${response.current.number})`,
+          label: `current:${response.current.number}`,
+          hint: `+added-sprint${response.current.number}`,
           title: `Adds to ${response.current.name} and tags added-sprint${response.current.number}`
         });
       }
@@ -1189,7 +1024,8 @@
         options.push({
           value: "proposal",
           number: response.proposal.number,
-          label: `Proposal (${response.proposal.number})`,
+          label: `proposal:${response.proposal.number}`,
+          hint: `+${response.proposal.name}`,
           title: `Tags ${response.proposal.name}`
         });
       }
@@ -1197,75 +1033,18 @@
         return;
       }
 
-      select.textContent = "";
-      const none = document.createElement("option");
-      none.value = "";
-      none.textContent = "None";
-      select.appendChild(none);
-
-      options.forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.value;
-        option.textContent = item.label;
-        option.title = item.title;
-        option.dataset.number = String(item.number);
-        select.appendChild(option);
-      });
-
-      row.style.display = "flex";
+      group.setOptions([{ value: "", label: "none" }, ...options]);
+      group.fieldset.style.display = "flex";
     });
   }
 
-  function loadPriorities(select) {
+  function loadPriorities(group) {
     chrome.runtime.sendMessage({ action: "get-priorities" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.ok) {
         return;
       }
-      setPriorityOptions(select, response.priorities);
+      setPriorityOptions(group, response.priorities);
     });
-  }
-
-  function setButtonsDisabled(disabled) {
-    const container = document.getElementById(CONTAINER_ID);
-    if (!container) {
-      return;
-    }
-    const buttons = container.querySelectorAll("button");
-    buttons.forEach((button) => {
-      button.disabled = disabled;
-      button.style.opacity = disabled ? "0.6" : "1";
-      button.style.cursor = disabled ? "not-allowed" : "pointer";
-    });
-  }
-
-  function setStatus(message, type) {
-    const status = document.getElementById(STATUS_ID);
-    if (!status) {
-      return;
-    }
-    status.textContent = message;
-    status.style.color = type === "error" ? "#d93025" : "#5f6368";
-  }
-
-  function setStatusSuccess(issueId, url) {
-    const status = document.getElementById(STATUS_ID);
-    if (!status) {
-      return;
-    }
-    status.textContent = "";
-
-    const text = document.createElement("span");
-    text.textContent = `Ticket created: ${issueId} `;
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.textContent = "Open in YouTrack";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.style.color = "#1a73e8";
-
-    status.appendChild(text);
-    status.appendChild(link);
   }
 
   function extractEmail() {
