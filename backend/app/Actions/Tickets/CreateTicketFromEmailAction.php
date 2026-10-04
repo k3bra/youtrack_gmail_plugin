@@ -7,7 +7,9 @@ use App\Services\TicketGeneratorService;
 use App\Services\YouTrackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
 
 class CreateTicketFromEmailAction
 {
@@ -23,6 +25,10 @@ class CreateTicketFromEmailAction
         $rules = [
             'type' => 'required|in:task,spike',
             'mode' => 'required|in:email,manual,ai',
+            'priority' => 'nullable|string',
+            'sprint' => 'nullable|in:current,proposal',
+            'sprintNumber' => 'required_with:sprint|integer',
+            'senderName' => 'nullable|string',
         ];
 
         if ($mode === 'manual') {
@@ -45,6 +51,42 @@ class CreateTicketFromEmailAction
             $this->persistRecord($baseRecord, null, null, 'failed', $message);
 
             return response()->json(['error' => $message], 400);
+        }
+
+        $customFields = [];
+        $priority = $payload['priority'] ?? null;
+        if (is_string($priority) && $priority !== '') {
+            try {
+                $allowedPriorities = $youTrackService->fetchPriorityValues();
+            } catch (\Throwable $e) {
+                $message = $e->getMessage();
+                $this->persistRecord($baseRecord, null, null, 'failed', $message);
+
+                return response()->json(['error' => $message], 502);
+            }
+
+            if (!in_array($priority, $allowedPriorities, true)) {
+                $message = 'Priority must be one of: ' . implode(', ', $allowedPriorities) . '.';
+                $this->persistRecord($baseRecord, null, null, 'failed', $message);
+
+                return response()->json(['error' => $message], 400);
+            }
+
+            $customFields[] = $youTrackService->priorityCustomField($priority);
+        }
+
+        try {
+            [$tags, $sprintToJoin] = $this->resolveSprint($payload, $youTrackService);
+        } catch (InvalidArgumentException $e) {
+            $message = $e->getMessage();
+            $this->persistRecord($baseRecord, null, null, 'failed', $message);
+
+            return response()->json(['error' => $message], 400);
+        } catch (\Throwable $e) {
+            $message = $e->getMessage();
+            $this->persistRecord($baseRecord, null, null, 'failed', $message);
+
+            return response()->json(['error' => $message], 502);
         }
 
         $normalizedPayload = $this->normalizePayload($payload, $mode ?? 'email');
@@ -70,7 +112,8 @@ class CreateTicketFromEmailAction
                 $type,
                 $aiOutput['summary'],
                 $aiOutput['description'],
-                $aiOutput['labels']
+                $customFields,
+                $tags
             );
         } catch (\Throwable $e) {
             $message = $e->getMessage();
@@ -79,9 +122,114 @@ class CreateTicketFromEmailAction
             return response()->json(['error' => $message], 502);
         }
 
+        $warning = null;
+        if ($sprintToJoin !== null) {
+            try {
+                $youTrackService->addIssueToSprint($sprintToJoin['agileId'], $sprintToJoin['id'], $issue['databaseId']);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to add issue to sprint', ['issue' => $issue['issueId'], 'error' => $e->getMessage()]);
+                $warning = "Ticket created, but it could not be added to {$sprintToJoin['name']}. Add it on the board manually.";
+            }
+        }
+
         $this->persistRecord($baseRecord, $aiOutput, $issue, 'success', null);
 
-        return response()->json($issue);
+        $response = [
+            'issueId' => $issue['issueId'],
+            'url' => $issue['url'],
+            'replyMessage' => $this->buildReplyMessage(
+                $payload['senderName'] ?? null,
+                $issue,
+                $payload['sprint'] ?? null,
+                isset($payload['sprintNumber']) ? (int) $payload['sprintNumber'] : null
+            ),
+        ];
+        if ($warning !== null) {
+            $response['warning'] = $warning;
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Reply to paste into the email thread so the reporter knows the ticket exists and where it is headed.
+     */
+    private function buildReplyMessage(?string $senderName, array $issue, ?string $sprint, ?int $sprintNumber): string
+    {
+        $firstName = $this->firstName($senderName);
+        $greeting = $firstName === null ? 'Hi,' : "Hi {$firstName},";
+
+        $plan = match ($sprint) {
+            'current' => "we'll work on it in the current sprint (Sprint {$sprintNumber})",
+            'proposal' => "it will be proposed for Sprint {$sprintNumber}",
+            default => 'our team will review and prioritize it',
+        };
+
+        $signature = trim((string) config('tickets.reply_signature'));
+        $signOff = $signature === '' ? 'Best,' : "Best,\n{$signature}";
+
+        return "{$greeting}\n\n"
+            . "Thanks for reporting this. We've created {$issue['issueId']} to track it, and {$plan}.\n\n"
+            . "You can follow its progress in YouTrack: {$issue['url']}\n\n"
+            . $signOff;
+    }
+
+    private function firstName(?string $senderName): ?string
+    {
+        if (!is_string($senderName)) {
+            return null;
+        }
+
+        $name = trim($senderName);
+        if ($name === '' || str_contains($name, '@')) {
+            return null;
+        }
+
+        return preg_split('/\s+/', $name)[0];
+    }
+
+    /**
+     * Returns the tags to apply and, for the current sprint, the sprint to add the issue to.
+     * The extension sends the sprint number it showed, so a stale form can't target the wrong sprint.
+     *
+     * @return array{0: array, 1: ?array}
+     */
+    private function resolveSprint(array $payload, YouTrackService $youTrackService): array
+    {
+        $sprint = $payload['sprint'] ?? null;
+        if ($sprint === null) {
+            return [[], null];
+        }
+
+        $expectedNumber = (int) $payload['sprintNumber'];
+
+        if ($sprint === 'proposal') {
+            $proposalTag = $youTrackService->fetchLatestProposalTag();
+            if ($proposalTag === null) {
+                throw new InvalidArgumentException('No proposal tag exists in YouTrack.');
+            }
+            if ($proposalTag['sprint'] !== $expectedNumber) {
+                throw new InvalidArgumentException(
+                    "The proposal sprint is now {$proposalTag['sprint']}. Reopen the ticket form and try again."
+                );
+            }
+
+            return [[['id' => $proposalTag['id']]], null];
+        }
+
+        $currentSprint = $youTrackService->fetchCurrentSprint();
+        if ($currentSprint === null) {
+            throw new InvalidArgumentException('The sprint board has no current sprint.');
+        }
+        if ($currentSprint['number'] !== $expectedNumber) {
+            throw new InvalidArgumentException(
+                "The current sprint is now {$currentSprint['number']}. Reopen the ticket form and try again."
+            );
+        }
+
+        $addedTag = $youTrackService->findOrCreateAddedSprintTag($currentSprint['number']);
+
+        return [[['id' => $addedTag['id']]], $currentSprint];
     }
 
     private function buildBaseRecord(array $payload, ?string $mode): array

@@ -22,7 +22,6 @@ class CreatePmsDocumentTicketAction
         $summaryTarget = $pmsDocument->title ?? $pmsDocument->source_url ?? $pmsDocument->original_filename;
         $summary = 'PMS analysis: ' . $summaryTarget;
         $description = $this->resolveTicketDescription($request, $pmsDocument, $analysis, $type);
-        $labels = ['pms', 'analysis'];
         $customFields = [
             [
                 '$type' => 'SingleEnumIssueCustomField',
@@ -45,7 +44,7 @@ class CreatePmsDocumentTicketAction
         ];
 
         try {
-            $issue = $youTrackService->createIssue($type, $summary, $description, $labels, $customFields);
+            $issue = $youTrackService->createIssue($type, $summary, $description, $customFields);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 502);
         }

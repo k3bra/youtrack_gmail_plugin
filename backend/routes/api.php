@@ -4,6 +4,7 @@ use App\Http\Controllers\PmsDocumentAnalysisController;
 use App\Http\Controllers\PmsDocumentController;
 use App\Http\Controllers\PmsDocumentExampleController;
 use App\Http\Controllers\PmsDocumentTicketController;
+use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketFromEmailController;
 use App\Http\Controllers\YouTrackIssueController;
 use App\Http\Middleware\ClientKeyMiddleware;
@@ -23,6 +24,20 @@ Route::middleware([ClientKeyMiddleware::class])
 
 Route::middleware([ClientKeyMiddleware::class])
     ->post('/tickets/preview', [TicketFromEmailController::class, 'preview']);
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->get('/tickets/priorities', [TicketFromEmailController::class, 'priorities']);
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->get('/tickets/sprint-options', [TicketFromEmailController::class, 'sprintOptions']);
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->post('/tickets/{issueId}/attachments/chunks', [TicketAttachmentController::class, 'storeChunk'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->post('/tickets/{issueId}/attachments/finalize', [TicketAttachmentController::class, 'finalize'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
 
 Route::middleware([ClientKeyMiddleware::class])
     ->get('/youtrack/issues/{issueId}', [YouTrackIssueController::class, 'show']);

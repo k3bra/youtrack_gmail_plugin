@@ -11,6 +11,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handler = handleCreateTicket;
   } else if (message.action === "preview-ticket") {
     handler = handlePreviewTicket;
+  } else if (message.action === "get-priorities") {
+    handler = handleGetPriorities;
+  } else if (message.action === "get-sprint-options") {
+    handler = handleGetSprintOptions;
+  } else if (message.action === "fetch-image") {
+    handler = handleFetchImage;
+  } else if (message.action === "upload-attachment-chunk") {
+    handler = handleUploadAttachmentChunk;
+  } else if (message.action === "finalize-attachments") {
+    handler = handleFinalizeAttachments;
   } else {
     return;
   }
@@ -31,7 +41,13 @@ async function handleCreateTicket(payload) {
     throw new Error("Backend response missing issue data.");
   }
 
-  return { ok: true, issueId: data.issueId, url: data.url };
+  return {
+    ok: true,
+    issueId: data.issueId,
+    url: data.url,
+    warning: data.warning || null,
+    replyMessage: data.replyMessage || null
+  };
 }
 
 async function handlePreviewTicket(payload) {
@@ -49,16 +65,94 @@ async function handlePreviewTicket(payload) {
   };
 }
 
-async function postJson(url, payload) {
-  const response = await fetch(url, {
-    method: "POST",
+async function handleGetPriorities() {
+  const data = await requestJson("GET", `${BACKEND_BASE_URL}/priorities`);
+
+  if (!data || !Array.isArray(data.priorities)) {
+    throw new Error("Backend response missing priorities.");
+  }
+
+  return { ok: true, priorities: data.priorities };
+}
+
+async function handleGetSprintOptions() {
+  const data = await requestJson("GET", `${BACKEND_BASE_URL}/sprint-options`);
+
+  return {
+    ok: true,
+    current: data ? data.current : null,
+    proposal: data ? data.proposal : null
+  };
+}
+
+// Only Gmail and Google's image hosts; the content script asks for these when it can't fetch cross-origin.
+const IMAGE_HOSTS = [/^https:\/\/mail\.google\.com\//, /^https:\/\/[a-z0-9-]+\.googleusercontent\.com\//];
+
+async function handleFetchImage(payload) {
+  const url = payload && payload.url;
+  if (typeof url !== "string" || !IMAGE_HOSTS.some((pattern) => pattern.test(url))) {
+    throw new Error("Image host not allowed.");
+  }
+
+  const response = await fetch(url, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`Image download failed (${response.status}).`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  return {
+    ok: true,
+    type: response.headers.get("Content-Type") || "",
+    data: arrayBufferToBase64(buffer)
+  };
+}
+
+async function handleUploadAttachmentChunk(payload) {
+  const { issueId, ...chunk } = payload;
+  const data = await postJson(
+    `${BACKEND_BASE_URL}/${encodeURIComponent(issueId)}/attachments/chunks`,
+    chunk
+  );
+
+  return { ok: true, done: Boolean(data && data.done), name: data ? data.name : null };
+}
+
+async function handleFinalizeAttachments(payload) {
+  await postJson(
+    `${BACKEND_BASE_URL}/${encodeURIComponent(payload.issueId)}/attachments/finalize`,
+    { names: payload.names }
+  );
+
+  return { ok: true };
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function postJson(url, payload) {
+  return requestJson("POST", url, payload);
+}
+
+async function requestJson(method, url, payload) {
+  const options = {
+    method,
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
       "X-Client-Key": CLIENT_KEY
-    },
-    body: JSON.stringify(payload)
-  });
+    }
+  };
+  if (payload !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(payload);
+  }
+
+  const response = await fetch(url, options);
 
   const text = await response.text();
   let data = null;

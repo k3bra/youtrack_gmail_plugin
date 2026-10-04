@@ -9,6 +9,16 @@
   const PANEL_RADIUS = "10px";
   const PANEL_BORDER = "1px solid #dadce0";
   const PANEL_SHADOW = "0 2px 6px rgba(60, 64, 67, 0.15)";
+  // Used until the backend returns the project's actual Priority values.
+  const DEFAULT_PRIORITIES = ["Highest", "High", "Medium"];
+  // Images smaller than this on either side are treated as logos, icons or tracking pixels.
+  const MIN_IMAGE_SIDE = 100;
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+  const MAX_TOTAL_IMAGE_BYTES = 25 * 1024 * 1024;
+  // Must not exceed StoreTicketAttachmentChunkAction::CHUNK_BYTES on the backend.
+  const UPLOAD_CHUNK_BYTES = 1024 * 1024;
+  const SIGNATURE_SELECTOR =
+    '.gmail_signature, [data-smartmail="gmail_signature"], [id*="Signature"], [class*="signature"]';
   let currentThreadUrl = null;
   let currentMessageId = null;
   let modalState = null;
@@ -268,8 +278,76 @@
     descriptionInput.style.fontSize = "13px";
     descriptionInput.style.resize = "vertical";
 
+    const priorityRow = document.createElement("label");
+    priorityRow.style.display = "flex";
+    priorityRow.style.alignItems = "center";
+    priorityRow.style.gap = "8px";
+    priorityRow.style.fontSize = "12px";
+    priorityRow.style.color = "#3c4043";
+    priorityRow.textContent = "Priority";
+
+    const prioritySelect = document.createElement("select");
+    prioritySelect.style.padding = "6px 8px";
+    prioritySelect.style.border = "1px solid #dadce0";
+    prioritySelect.style.borderRadius = "6px";
+    prioritySelect.style.fontSize = "13px";
+    prioritySelect.style.background = "#fff";
+    priorityRow.appendChild(prioritySelect);
+    setPriorityOptions(prioritySelect, DEFAULT_PRIORITIES);
+    loadPriorities(prioritySelect);
+
+    const sprintRow = document.createElement("label");
+    sprintRow.style.display = "none";
+    sprintRow.style.alignItems = "center";
+    sprintRow.style.gap = "8px";
+    sprintRow.style.fontSize = "12px";
+    sprintRow.style.color = "#3c4043";
+    sprintRow.textContent = "Sprint";
+
+    const sprintSelect = document.createElement("select");
+    sprintSelect.style.padding = "6px 8px";
+    sprintSelect.style.border = "1px solid #dadce0";
+    sprintSelect.style.borderRadius = "6px";
+    sprintSelect.style.fontSize = "13px";
+    sprintSelect.style.background = "#fff";
+    sprintRow.appendChild(sprintSelect);
+    loadSprintOptions(sprintRow, sprintSelect);
+
+    const optionsRow = document.createElement("div");
+    optionsRow.style.display = "flex";
+    optionsRow.style.flexWrap = "wrap";
+    optionsRow.style.gap = "16px";
+    optionsRow.appendChild(priorityRow);
+    optionsRow.appendChild(sprintRow);
+
+    const imagesSection = document.createElement("div");
+    imagesSection.style.display = "none";
+    imagesSection.style.flexDirection = "column";
+    imagesSection.style.gap = "6px";
+
+    const imagesHeader = document.createElement("div");
+    imagesHeader.style.fontSize = "12px";
+    imagesHeader.style.color = "#3c4043";
+
+    const imagesGrid = document.createElement("div");
+    imagesGrid.style.display = "flex";
+    imagesGrid.style.flexWrap = "wrap";
+    imagesGrid.style.gap = "8px";
+
+    const imagesNote = document.createElement("div");
+    imagesNote.style.fontSize = "11px";
+    imagesNote.style.color = "#5f6368";
+
+    imagesSection.appendChild(imagesHeader);
+    imagesSection.appendChild(imagesGrid);
+    imagesSection.appendChild(imagesNote);
+
+    let imageItems = [];
+
     manualSection.appendChild(summaryInput);
+    manualSection.appendChild(optionsRow);
     manualSection.appendChild(descriptionInput);
+    manualSection.appendChild(imagesSection);
 
     const aiSection = document.createElement("div");
     aiSection.style.display = "none";
@@ -298,6 +376,64 @@
     const status = document.createElement("div");
     status.style.fontSize = "12px";
     status.style.color = "#5f6368";
+
+    const replyPanel = document.createElement("div");
+    replyPanel.style.display = "none";
+    replyPanel.style.flexDirection = "column";
+    replyPanel.style.gap = "8px";
+    replyPanel.style.borderTop = "1px solid #e0e0e0";
+    replyPanel.style.paddingTop = "12px";
+
+    const replyLabel = document.createElement("div");
+    replyLabel.textContent = "Reply to the thread";
+    replyLabel.style.fontSize = "12px";
+    replyLabel.style.fontWeight = "600";
+    replyLabel.style.color = "#3c4043";
+
+    const replyInput = document.createElement("textarea");
+    replyInput.rows = 9;
+    replyInput.style.padding = "8px";
+    replyInput.style.border = "1px solid #dadce0";
+    replyInput.style.borderRadius = "6px";
+    replyInput.style.fontSize = "13px";
+    replyInput.style.resize = "vertical";
+
+    const replyActions = document.createElement("div");
+    replyActions.style.display = "flex";
+    replyActions.style.gap = "8px";
+
+    const replyAllButton = document.createElement("button");
+    replyAllButton.type = "button";
+    replyAllButton.textContent = "Reply all with message";
+    replyAllButton.style.border = "1px solid #1a73e8";
+    replyAllButton.style.background = "#1a73e8";
+    replyAllButton.style.color = "#fff";
+    replyAllButton.style.padding = "6px 12px";
+    replyAllButton.style.borderRadius = "6px";
+    replyAllButton.style.cursor = "pointer";
+    replyAllButton.style.fontSize = "12px";
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.textContent = "Copy";
+    copyButton.style.border = "1px solid #dadce0";
+    copyButton.style.background = "#fff";
+    copyButton.style.color = "#3c4043";
+    copyButton.style.padding = "6px 12px";
+    copyButton.style.borderRadius = "6px";
+    copyButton.style.cursor = "pointer";
+    copyButton.style.fontSize = "12px";
+
+    const replyStatus = document.createElement("span");
+    replyStatus.style.fontSize = "12px";
+    replyStatus.style.alignSelf = "center";
+
+    replyActions.appendChild(replyAllButton);
+    replyActions.appendChild(copyButton);
+    replyActions.appendChild(replyStatus);
+    replyPanel.appendChild(replyLabel);
+    replyPanel.appendChild(replyInput);
+    replyPanel.appendChild(replyActions);
 
     const actions = document.createElement("div");
     actions.style.display = "flex";
@@ -333,7 +469,13 @@
     modal.appendChild(modeWrap);
     modal.appendChild(manualSection);
     modal.appendChild(aiSection);
+    const uploadStatus = document.createElement("div");
+    uploadStatus.style.fontSize = "12px";
+    uploadStatus.style.color = "#5f6368";
+
     modal.appendChild(status);
+    modal.appendChild(uploadStatus);
+    modal.appendChild(replyPanel);
     modal.appendChild(actions);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
@@ -395,6 +537,7 @@
 
     function closeModal() {
       document.removeEventListener("keydown", onKeyDown);
+      imageItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       if (overlay.parentElement) {
         overlay.parentElement.removeChild(overlay);
       }
@@ -413,6 +556,11 @@
       aiButton.disabled = isLoading;
       summaryInput.disabled = isLoading;
       descriptionInput.disabled = isLoading;
+      prioritySelect.disabled = isLoading;
+      sprintSelect.disabled = isLoading;
+      imageItems.forEach((item) => {
+        item.checkbox.disabled = isLoading;
+      });
       aiBodyInput.disabled = isLoading;
       submitButton.style.opacity = isLoading ? "0.7" : "1";
       cancelButton.style.opacity = isLoading ? "0.7" : "1";
@@ -428,8 +576,9 @@
       status.style.color = type === "error" ? "#d93025" : "#5f6368";
     }
 
-    function setStatusSuccess(issueId, url) {
+    function setStatusSuccess(issueId, url, warning) {
       status.textContent = "";
+      status.style.color = "#5f6368";
       const text = document.createElement("span");
       text.textContent = `Ticket created: ${issueId} `;
       const link = document.createElement("a");
@@ -440,7 +589,48 @@
       link.style.color = "#1a73e8";
       status.appendChild(text);
       status.appendChild(link);
+      if (warning) {
+        const warningText = document.createElement("div");
+        warningText.textContent = warning;
+        warningText.style.color = "#b06000";
+        warningText.style.marginTop = "4px";
+        status.appendChild(warningText);
+      }
     }
+
+    function showReplyPanel(message) {
+      replyInput.value = message;
+      replyStatus.textContent = "";
+      replyPanel.style.display = "flex";
+      replyPanel.scrollIntoView({ block: "nearest" });
+    }
+
+    function setReplyStatus(message, type) {
+      replyStatus.textContent = message;
+      replyStatus.style.color = type === "error" ? "#d93025" : "#188038";
+    }
+
+    copyButton.addEventListener("click", async () => {
+      const copied = await copyText(replyInput.value);
+      setReplyStatus(
+        copied ? "Copied." : "Copy failed. Select the text and copy it manually.",
+        copied ? "info" : "error"
+      );
+    });
+
+    replyAllButton.addEventListener("click", async () => {
+      replyAllButton.disabled = true;
+      setReplyStatus("Opening Reply all...", "info");
+      const result = await insertIntoReplyAll(replyInput.value);
+      replyAllButton.disabled = false;
+
+      if (result.ok) {
+        // Leave the draft for the user to review and send themselves.
+        closeModal();
+        return;
+      }
+      setReplyStatus(`${result.error} Use Copy and paste it instead.`, "error");
+    });
 
     function submitLabel() {
       return currentMode === "manual" ? "Create Ticket" : "✨ Generate draft";
@@ -527,6 +717,19 @@
       }
 
       const payload = { type, mode: "manual", summary, description };
+      if (prioritySelect.value) {
+        payload.priority = prioritySelect.value;
+      }
+      const sender = findSender();
+      if (sender && sender.name) {
+        payload.senderName = sender.name;
+      }
+
+      const sprintOption = sprintSelect.selectedOptions[0];
+      if (sprintOption && sprintOption.value) {
+        payload.sprint = sprintOption.value;
+        payload.sprintNumber = Number(sprintOption.dataset.number);
+      }
       if (draftLabels.length > 0) {
         payload.labels = draftLabels;
       }
@@ -534,12 +737,214 @@
         payload.email = draftEmail;
       }
 
+      const selectedImages = imageItems.filter((item) => item.checkbox.checked);
+      const selectedBytes = selectedImages.reduce((sum, item) => sum + item.blob.size, 0);
+      if (selectedBytes > MAX_TOTAL_IMAGE_BYTES) {
+        setStatusMessage(
+          `Selected images are ${formatBytes(selectedBytes)}; the limit is ${formatBytes(MAX_TOTAL_IMAGE_BYTES)}. Untick some images.`,
+          "error"
+        );
+        return;
+      }
+
       setLoading(true, "Creating...");
       setStatusMessage("Creating ticket...", "info");
 
       sendToBackground("create-ticket", payload, (response) => {
-        setStatusSuccess(response.issueId, response.url);
+        setStatusSuccess(response.issueId, response.url, response.warning);
+        // The ticket exists now; prevent creating a duplicate.
+        submitButton.disabled = true;
+        submitButton.textContent = "Created";
+        submitButton.style.opacity = "0.7";
+        imageItems.forEach((item) => {
+          item.checkbox.disabled = true;
+        });
+        if (response.replyMessage) {
+          showReplyPanel(response.replyMessage);
+        }
+        if (selectedImages.length > 0) {
+          uploadImages(response.issueId, selectedImages);
+        }
       });
+    }
+
+    async function uploadImages(issueId, items) {
+      const uploaded = [];
+      const failed = [];
+
+      for (let i = 0; i < items.length; i++) {
+        uploadStatus.style.color = "#5f6368";
+        uploadStatus.textContent = `Uploading images ${i + 1}/${items.length}...`;
+        try {
+          uploaded.push(await uploadImage(issueId, items[i]));
+        } catch (error) {
+          failed.push(`${items[i].name} (${error.message})`);
+        }
+      }
+
+      let finalizeError = null;
+      if (uploaded.length > 0) {
+        const response = await sendMessageAsync("finalize-attachments", {
+          issueId,
+          names: uploaded
+        });
+        if (!response.ok) {
+          finalizeError = response.error;
+        }
+      }
+
+      const messages = [];
+      if (uploaded.length > 0) {
+        messages.push(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} attached.`);
+      }
+      if (failed.length > 0) {
+        messages.push(`Not attached: ${failed.join("; ")}.`);
+      }
+      if (finalizeError) {
+        messages.push(`Images were attached but not embedded in the description: ${finalizeError}`);
+      }
+      uploadStatus.textContent = messages.join(" ");
+      uploadStatus.style.color = failed.length > 0 || finalizeError ? "#b06000" : "#188038";
+    }
+
+    async function uploadImage(issueId, item) {
+      const buffer = await item.blob.arrayBuffer();
+      const total = Math.max(1, Math.ceil(buffer.byteLength / UPLOAD_CHUNK_BYTES));
+      const uploadId = crypto.randomUUID();
+      let name = item.name;
+
+      for (let index = 0; index < total; index++) {
+        const chunk = buffer.slice(index * UPLOAD_CHUNK_BYTES, (index + 1) * UPLOAD_CHUNK_BYTES);
+        const response = await sendMessageAsync("upload-attachment-chunk", {
+          issueId,
+          uploadId,
+          name: item.name,
+          index,
+          total,
+          data: arrayBufferToBase64(chunk)
+        });
+        if (!response.ok) {
+          throw new Error(response.error || "upload failed");
+        }
+        if (response.done && response.name) {
+          name = response.name;
+        }
+      }
+
+      return name;
+    }
+
+    async function prepareImages() {
+      const ownState = modalState;
+      const sources = collectImageSources();
+      if (sources.length === 0) {
+        return;
+      }
+
+      imagesSection.style.display = "flex";
+      imagesHeader.textContent = "Looking for images in the email...";
+
+      let tooLarge = 0;
+      let unreadable = 0;
+      const seenHashes = new Set();
+      const usedNames = new Set();
+      const items = [];
+
+      for (const source of sources) {
+        let blob;
+        try {
+          blob = await downloadImage(source.url);
+        } catch (error) {
+          unreadable++;
+          continue;
+        }
+
+        if (!blob.type.startsWith("image/")) {
+          continue;
+        }
+        if (blob.size > MAX_IMAGE_BYTES) {
+          tooLarge++;
+          continue;
+        }
+
+        let dimensions;
+        try {
+          dimensions = await imageDimensions(blob);
+        } catch (error) {
+          unreadable++;
+          continue;
+        }
+        if (dimensions.width < MIN_IMAGE_SIDE || dimensions.height < MIN_IMAGE_SIDE) {
+          continue;
+        }
+
+        const hash = await hashBlob(blob);
+        if (seenHashes.has(hash)) {
+          continue;
+        }
+        seenHashes.add(hash);
+
+        items.push({
+          blob,
+          name: uniqueImageName(source.name, blob.type, items.length + 1, usedNames),
+          previewUrl: URL.createObjectURL(blob)
+        });
+      }
+
+      if (modalState !== ownState) {
+        items.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+        return;
+      }
+
+      imageItems = items.map((item) => ({ ...item, checkbox: renderImageItem(item) }));
+
+      if (imageItems.length === 0 && tooLarge === 0 && unreadable === 0) {
+        imagesSection.style.display = "none";
+        return;
+      }
+
+      imagesHeader.textContent =
+        imageItems.length > 0
+          ? `Attach images (${imageItems.length})`
+          : "No images to attach";
+
+      const notes = [];
+      if (tooLarge > 0) {
+        notes.push(`${tooLarge} image${tooLarge === 1 ? " is" : "s are"} over ${formatBytes(MAX_IMAGE_BYTES)} and won't be attached.`);
+      }
+      if (unreadable > 0) {
+        notes.push(`${unreadable} image${unreadable === 1 ? "" : "s"} couldn't be loaded.`);
+      }
+      imagesNote.textContent = notes.join(" ");
+    }
+
+    function renderImageItem(item) {
+      const label = document.createElement("label");
+      label.style.display = "flex";
+      label.style.flexDirection = "column";
+      label.style.alignItems = "center";
+      label.style.gap = "2px";
+      label.style.cursor = "pointer";
+      label.title = `${item.name} (${formatBytes(item.blob.size)})`;
+
+      const img = document.createElement("img");
+      img.src = item.previewUrl;
+      img.alt = item.name;
+      img.style.height = "64px";
+      img.style.maxWidth = "110px";
+      img.style.objectFit = "cover";
+      img.style.border = "1px solid #dadce0";
+      img.style.borderRadius = "4px";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+
+      label.appendChild(img);
+      label.appendChild(checkbox);
+      imagesGrid.appendChild(label);
+
+      return checkbox;
     }
 
     function generateDraft() {
@@ -570,10 +975,8 @@
         draftLabels = response.labels || [];
         draftEmail = email;
         setMode("manual");
-        const labelText =
-          draftLabels.length > 0 ? ` Labels: ${draftLabels.join(", ")}.` : "";
         setStatusMessage(
-          `Draft ready. Review and edit it, then click Create Ticket.${labelText}`,
+          "Draft ready. Review and edit it, then click Create Ticket.",
           "info"
         );
       });
@@ -621,6 +1024,82 @@
 
     setMode(currentMode);
     document.addEventListener("keydown", onKeyDown);
+    prepareImages();
+  }
+
+  function setPriorityOptions(select, priorities) {
+    const selected = select.value;
+    select.textContent = "";
+
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "None";
+    select.appendChild(none);
+
+    priorities.forEach((priority) => {
+      const option = document.createElement("option");
+      option.value = priority;
+      option.textContent = priority;
+      select.appendChild(option);
+    });
+
+    select.value = priorities.includes(selected) ? selected : "";
+  }
+
+  // Shown only once the backend confirms the current sprint and/or latest proposal tag.
+  function loadSprintOptions(row, select) {
+    chrome.runtime.sendMessage({ action: "get-sprint-options" }, (response) => {
+      if (chrome.runtime.lastError || !response || !response.ok) {
+        return;
+      }
+
+      const options = [];
+      if (response.current) {
+        options.push({
+          value: "current",
+          number: response.current.number,
+          label: `Current (${response.current.number})`,
+          title: `Adds to ${response.current.name} and tags added-sprint${response.current.number}`
+        });
+      }
+      if (response.proposal) {
+        options.push({
+          value: "proposal",
+          number: response.proposal.number,
+          label: `Proposal (${response.proposal.number})`,
+          title: `Tags ${response.proposal.name}`
+        });
+      }
+      if (options.length === 0) {
+        return;
+      }
+
+      select.textContent = "";
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = "None";
+      select.appendChild(none);
+
+      options.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.value;
+        option.textContent = item.label;
+        option.title = item.title;
+        option.dataset.number = String(item.number);
+        select.appendChild(option);
+      });
+
+      row.style.display = "flex";
+    });
+  }
+
+  function loadPriorities(select) {
+    chrome.runtime.sendMessage({ action: "get-priorities" }, (response) => {
+      if (chrome.runtime.lastError || !response || !response.ok) {
+        return;
+      }
+      setPriorityOptions(select, response.priorities);
+    });
   }
 
   function setButtonsDisabled(disabled) {
@@ -668,11 +1147,11 @@
 
   function extractEmail() {
     const subjectEl = findSubjectElement();
-    const fromEl = findFromElement();
+    const sender = findSender();
     const bodyText = getBodyText();
 
     const subject = subjectEl ? subjectEl.textContent.trim() : "";
-    const from = fromEl ? fromEl.textContent.trim() : "";
+    const from = sender ? sender.name || sender.email : "";
     const body = bodyText || "";
     const threadUrl = window.location.href;
 
@@ -692,12 +1171,254 @@
     );
   }
 
-  function findFromElement() {
-    return (
-      document.querySelector("span.gD") ||
-      document.querySelector("span.go") ||
-      document.querySelector("span[email]")
+  // Inline images in the open messages plus image attachments, skipping signature blocks.
+  function collectImageSources() {
+    const sources = [];
+    const seen = new Set();
+    const add = (url, name) => {
+      if (!url || seen.has(url)) {
+        return;
+      }
+      seen.add(url);
+      sources.push({ url, name });
+    };
+
+    const bodies = Array.from(document.querySelectorAll("div.a3s")).filter((node) =>
+      isVisible(node)
     );
+    bodies.forEach((body) => {
+      body.querySelectorAll("img").forEach((img) => {
+        if (img.closest(SIGNATURE_SELECTOR)) {
+          return;
+        }
+        // Cheap pre-filter for icons already rendered in the page; real size is checked after download.
+        if (
+          img.complete &&
+          img.naturalWidth > 0 &&
+          (img.naturalWidth < MIN_IMAGE_SIDE || img.naturalHeight < MIN_IMAGE_SIDE)
+        ) {
+          return;
+        }
+        add(img.currentSrc || img.src, img.getAttribute("alt") || "");
+      });
+    });
+
+    const messages = Array.from(document.querySelectorAll("div[data-message-id]")).filter(
+      (node) => isVisible(node)
+    );
+    messages.forEach((message) => {
+      message.querySelectorAll("[download_url]").forEach((node) => {
+        // Format: "<mime type>:<file name>:<url>"
+        const value = node.getAttribute("download_url") || "";
+        const first = value.indexOf(":");
+        const second = value.indexOf(":", first + 1);
+        if (first < 0 || second < 0) {
+          return;
+        }
+        const mimeType = value.slice(0, first);
+        if (!mimeType.startsWith("image/")) {
+          return;
+        }
+        add(value.slice(second + 1), value.slice(first + 1, second));
+      });
+    });
+
+    return sources;
+  }
+
+  async function downloadImage(url) {
+    try {
+      const response = await fetch(url, { credentials: "include" });
+      if (response.ok) {
+        return await response.blob();
+      }
+    } catch (error) {
+      // Cross-origin images (e.g. googleusercontent.com) are fetched by the background worker instead.
+    }
+
+    const response = await sendMessageAsync("fetch-image", { url });
+    if (!response.ok) {
+      throw new Error(response.error || "download failed");
+    }
+    return base64ToBlob(response.data, response.type);
+  }
+
+  async function imageDimensions(blob) {
+    const bitmap = await createImageBitmap(blob);
+    const dimensions = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return dimensions;
+  }
+
+  async function hashBlob(blob) {
+    const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  function uniqueImageName(rawName, mimeType, position, usedNames) {
+    const extension = (mimeType.split("/")[1] || "png").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "");
+    let base = (rawName || "").replace(/\.[A-Za-z0-9]+$/, "").replace(/[^A-Za-z0-9_-]+/g, "_");
+    base = base.replace(/^_+|_+$/g, "").slice(0, 60) || `image-${position}`;
+
+    let name = `${base}.${extension}`;
+    let counter = 2;
+    while (usedNames.has(name)) {
+      name = `${base}-${counter}.${extension}`;
+      counter++;
+    }
+    usedNames.add(name);
+    return name;
+  }
+
+  function formatBytes(bytes) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+  }
+
+  function base64ToBlob(base64, type) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: type || "" });
+  }
+
+  function sendMessageAsync(action, payload) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action, payload }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response || { ok: false, error: "No response from background." });
+      });
+    });
+  }
+
+  // Sender of the newest open message in the thread (the one being replied to),
+  // falling back to the first sender on the page.
+  function findSender() {
+    const messages = Array.from(
+      document.querySelectorAll("div[data-message-id]")
+    ).filter((node) => isVisible(node));
+    const scopes = messages.length > 0 ? [messages[messages.length - 1], document] : [document];
+
+    for (const scope of scopes) {
+      const el =
+        scope.querySelector("span.gD[email]") ||
+        scope.querySelector("span.gD") ||
+        scope.querySelector("span[email]");
+      if (el) {
+        const name = (el.getAttribute("name") || el.textContent || "").trim();
+        const email = (el.getAttribute("email") || "").trim();
+        if (name || email) {
+          return { name, email };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      return copied;
+    }
+  }
+
+  function findReplyAllButton() {
+    const messages = Array.from(
+      document.querySelectorAll("div[data-message-id]")
+    ).filter((node) => isVisible(node));
+    const lastMessage = messages[messages.length - 1];
+
+    const candidates = [
+      // Thread footer "Reply all" button.
+      ...document.querySelectorAll("span.ams.bkI"),
+      ...(lastMessage
+        ? lastMessage.querySelectorAll('[aria-label="Reply all"], [data-tooltip="Reply all"]')
+        : []),
+      ...document.querySelectorAll('[role="button"][aria-label="Reply all"]')
+    ];
+
+    return candidates.find((node) => isVisible(node)) || null;
+  }
+
+  function findReplyBodies() {
+    return Array.from(
+      document.querySelectorAll('div[contenteditable="true"][role="textbox"]')
+    ).filter((node) => isVisible(node));
+  }
+
+  async function insertIntoReplyAll(text) {
+    const button = findReplyAllButton();
+    if (!button) {
+      return { ok: false, error: "Couldn't find Gmail's Reply all button." };
+    }
+
+    const existing = new Set(findReplyBodies());
+    button.click();
+
+    const body = await waitFor(() => {
+      const bodies = findReplyBodies();
+      return bodies.find((node) => !existing.has(node)) || bodies[bodies.length - 1] || null;
+    }, 5000);
+
+    if (!body) {
+      return { ok: false, error: "Reply all opened, but the reply box wasn't found." };
+    }
+
+    body.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(body);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const inserted = document.execCommand("insertText", false, `${text}\n\n`);
+    if (!inserted) {
+      return { ok: false, error: "Couldn't type into the reply box." };
+    }
+
+    return { ok: true };
+  }
+
+  function waitFor(check, timeoutMs) {
+    return new Promise((resolve) => {
+      const startedAt = Date.now();
+      const tick = () => {
+        const result = check();
+        if (result || Date.now() - startedAt >= timeoutMs) {
+          resolve(result || null);
+          return;
+        }
+        setTimeout(tick, 150);
+      };
+      tick();
+    });
   }
 
   function findBodyElement() {
