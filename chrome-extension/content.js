@@ -17,6 +17,8 @@
   const MAX_TOTAL_IMAGE_BYTES = 25 * 1024 * 1024;
   // Must not exceed StoreTicketAttachmentChunkAction::CHUNK_BYTES on the backend.
   const UPLOAD_CHUNK_BYTES = 1024 * 1024;
+  // Reply all is flagged when the thread includes anyone outside these domains (subdomains count as internal).
+  const INTERNAL_DOMAINS = ["hijiffy.com"];
   const SIGNATURE_SELECTOR =
     '.gmail_signature, [data-smartmail="gmail_signature"], [id*="Signature"], [class*="signature"]';
   let currentThreadUrl = null;
@@ -442,7 +444,18 @@
     replyActions.appendChild(copyButton);
     replyActions.appendChild(replyStatus);
     replyPanel.appendChild(replyLabel);
+    const replyWarning = document.createElement("div");
+    replyWarning.style.display = "none";
+    replyWarning.style.fontSize = "12px";
+    replyWarning.style.lineHeight = "1.4";
+    replyWarning.style.color = "#7a4100";
+    replyWarning.style.background = "#fef7e0";
+    replyWarning.style.border = "1px solid #f9ab00";
+    replyWarning.style.borderRadius = "6px";
+    replyWarning.style.padding = "8px 10px";
+
     replyPanel.appendChild(replyInput);
+    replyPanel.appendChild(replyWarning);
     replyPanel.appendChild(replyActions);
 
     const actions = document.createElement("div");
@@ -626,8 +639,31 @@
     function showReplyPanel(message) {
       replyInput.value = message;
       replyStatus.textContent = "";
+      updateReplyAllWarning();
       replyPanel.style.display = "flex";
       replyPanel.scrollIntoView({ block: "nearest" });
+    }
+
+    function updateReplyAllWarning() {
+      const external = findExternalParticipants();
+
+      if (external.length === 0) {
+        replyWarning.style.display = "none";
+        replyAllButton.textContent = "Reply all with message";
+        replyAllButton.style.background = "#1a73e8";
+        replyAllButton.style.borderColor = "#1a73e8";
+        return;
+      }
+
+      const listed = external.slice(0, 5).join(", ");
+      const more = external.length > 5 ? ` and ${external.length - 5} more` : "";
+      replyWarning.textContent =
+        `⚠️ This thread includes people outside ${INTERNAL_DOMAINS.join(", ")}: ${listed}${more}. ` +
+        "Reply all would send them this message, including the internal YouTrack link. Check the recipients before sending.";
+      replyWarning.style.display = "block";
+      replyAllButton.textContent = "⚠️ Reply all (includes external)";
+      replyAllButton.style.background = "#b06000";
+      replyAllButton.style.borderColor = "#b06000";
     }
 
     function setReplyStatus(message, type) {
@@ -1394,6 +1430,31 @@
         resolve(response || { ok: false, error: "No response from background." });
       });
     });
+  }
+
+  // Email addresses shown in the open messages' headers (from, to, cc) that are not internal.
+  function findExternalParticipants() {
+    const messages = Array.from(document.querySelectorAll("div[data-message-id]")).filter(
+      (node) => isVisible(node)
+    );
+    const scopes = messages.length > 0 ? messages : [document];
+    const external = new Set();
+
+    scopes.forEach((scope) => {
+      scope.querySelectorAll("[email]").forEach((node) => {
+        const email = (node.getAttribute("email") || "").trim().toLowerCase();
+        if (email.includes("@") && !isInternalEmail(email)) {
+          external.add(email);
+        }
+      });
+    });
+
+    return Array.from(external);
+  }
+
+  function isInternalEmail(email) {
+    const domain = email.split("@").pop();
+    return INTERNAL_DOMAINS.some((internal) => domain === internal || domain.endsWith(`.${internal}`));
   }
 
   // Sender of the newest open message in the thread (the one being replied to),
