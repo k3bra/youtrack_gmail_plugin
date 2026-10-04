@@ -57,6 +57,9 @@
 
     ensureButtons();
     if (modalState) {
+      if (modalState.isMinimized && modalState.refreshMinimized) {
+        modalState.refreshMinimized();
+      }
       setFloatingVisible(false);
     } else {
       setFloatingVisible(true);
@@ -122,6 +125,9 @@
 .ytx-tag-warn { background: #FFB454; }
 .ytx-tag-info { background: #45474F; color: #F4F5F7; }
 .ytx-warnbox { padding: 8px 10px; border: 1px solid #FFB454; background: #2A2218; color: #FFD9A8; }
+.ytx-source { display: flex; gap: 8px; min-width: 0; color: #9A9EA6; }
+.ytx-source-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #D7D9DE; }
+.ytx .ytx-warnbox .ytx-btn { min-height: 32px; padding: 4px 10px; }
 .ytx-reply { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px dashed #45474F; }
 .ytx-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .ytx .ytx-btn { min-height: 40px; padding: 8px 14px; }
@@ -179,6 +185,12 @@
       node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
     });
     return node;
+  }
+
+  function setTextIfChanged(node, text) {
+    if (node.textContent !== text) {
+      node.textContent = text;
+    }
   }
 
   function badge() {
@@ -296,6 +308,10 @@
 
     let type = initialType;
     let currentMode = "manual";
+    // Everything the ticket needs from the email is read once, here, so it can't mix two emails.
+    const snapshot = captureEmailSnapshot();
+    let touched = false;
+    let created = false;
     let draftLabels = [];
     let draftEmail = null;
     let imageItems = [];
@@ -317,6 +333,27 @@
     // $ yt create --type=task|spike
     const taskChip = h("button", "ytx-chip", { type: "button", text: "task" });
     const spikeChip = h("button", "ytx-chip", { type: "button", text: "spike" });
+    const sourceLine = h("div", "ytx-source", {}, [
+      h("span", "ytx-flag", { text: "source:" }),
+      h("span", "ytx-source-text", {
+        text: snapshot.subject
+          ? `${snapshot.subject}${snapshot.senderName ? ` · ${snapshot.senderName}` : ""}`
+          : "(no email open)",
+        title: snapshot.subject
+      })
+    ]);
+
+    const mismatchText = h("div", "");
+    const loadEmailButton = h("button", "ytx-btn ytx-btn-warn", { type: "button", text: "load this email" });
+    const keepDraftButton = h("button", "ytx-btn", { type: "button", text: "keep draft" });
+    const mismatchBanner = h("div", "ytx-warnbox", {}, [
+      mismatchText,
+      h("div", "ytx-row", {}, [loadEmailButton, keepDraftButton])
+    ]);
+    mismatchBanner.style.display = "none";
+    mismatchBanner.style.flexDirection = "column";
+    mismatchBanner.style.gap = "8px";
+
     const commandLine = h("div", "ytx-cmd", {}, [
       h("span", "ytx-prompt", { text: "$" }),
       h("span", "", { text: "yt create" }),
@@ -376,11 +413,10 @@
     ]);
 
     // Source email + AI
-    const email = extractEmail();
     const aiBodyInput = h("textarea", "ytx-code", {
       id: `ytx-source-${groupId}`,
       rows: 14,
-      value: email ? email.body : "",
+      value: snapshot.body,
       spellcheck: false
     });
     const aiSection = h("div", "ytx-field", {}, [
@@ -419,6 +455,8 @@
     ]);
 
     const body = h("div", "ytx-body", {}, [
+      mismatchBanner,
+      sourceLine,
       commandLine,
       tabs,
       manualSection,
@@ -528,7 +566,7 @@
     }
 
     function updateReplyAllWarning() {
-      const external = findExternalParticipants();
+      const external = snapshot.external;
 
       if (external.length === 0) {
         replyWarning.style.display = "none";
@@ -563,7 +601,7 @@
     replyAllButton.addEventListener("click", async () => {
       replyAllButton.disabled = true;
       setReplyStatus("opening reply all...", "info");
-      const result = await insertIntoReplyAll(replyInput.value);
+      const result = await replyAllOnSourceEmail(replyInput.value);
       replyAllButton.disabled = false;
 
       if (result.ok) {
@@ -597,9 +635,72 @@
     }
 
     function updateTitles() {
-      titleText.textContent = `yt-ticket — new ${type} — ${currentMode === "manual" ? "ticket.md" : "source.eml"}`;
-      minimizedText.textContent = `yt-ticket · ${type} · draft`;
+      setTextIfChanged(titleText, `yt-ticket — new ${type} — ${currentMode === "manual" ? "ticket.md" : "source.eml"}`);
+      const otherEmail = isOnDifferentEmail();
+      // Only write when the text changes: this runs from the page's MutationObserver, and
+      // writing unchanged text would trigger the observer again in an endless loop.
+      setTextIfChanged(minimizedText, `yt-ticket · ${type} · ${created ? "created" : "draft"}${otherEmail ? " · other email" : ""}`);
+      const title = otherEmail ? `This form is for: ${snapshot.subject}` : "";
+      if (minimizedBar.title !== title) {
+        minimizedBar.title = title;
+      }
     }
+
+    function isOnDifferentEmail() {
+      const key = currentEmailKey();
+      return key !== null && key !== snapshot.key;
+    }
+
+    function startOverOnCurrentEmail() {
+      const nextType = type;
+      closeModal();
+      openModal(nextType);
+    }
+
+    function checkSourceEmail() {
+      if (!isOnDifferentEmail()) {
+        mismatchBanner.style.display = "none";
+        return true;
+      }
+      if (!touched && !created) {
+        // Nothing to lose: rebuild the form from the email that is open now.
+        startOverOnCurrentEmail();
+        return false;
+      }
+
+      const current = extractEmail();
+      mismatchText.textContent =
+        `[WARN] you're now on a different email: "${current ? current.subject : "unknown"}". ` +
+        `This ${created ? "ticket" : "draft"} is from "${snapshot.subject}".`;
+      loadEmailButton.textContent = created ? "new ticket for this email" : "load this email";
+      keepDraftButton.textContent = created ? "keep" : "keep draft";
+      mismatchBanner.style.display = "flex";
+      body.scrollTop = 0;
+      return true;
+    }
+
+    async function replyAllOnSourceEmail(text) {
+      if (currentEmailKey() !== snapshot.key) {
+        // Reply all must go to the email the ticket came from, so navigate back to it first.
+        setReplyStatus("going back to the source email...", "info");
+        window.location.href = snapshot.threadUrl;
+        const back = await waitFor(() => currentEmailKey() === snapshot.key, 6000);
+        if (!back) {
+          return { ok: false, error: `Couldn't reopen "${snapshot.subject}".` };
+        }
+      }
+      return insertIntoReplyAll(text);
+    }
+
+    loadEmailButton.addEventListener("click", () => startOverOnCurrentEmail());
+    keepDraftButton.addEventListener("click", () => {
+      mismatchBanner.style.display = "none";
+    });
+    [summaryInput, descriptionInput, aiBodyInput].forEach((input) => {
+      input.addEventListener("input", () => {
+        touched = true;
+      });
+    });
 
     function minimizeModal() {
       modalState.isMinimized = true;
@@ -610,6 +711,9 @@
     }
 
     function restoreModal() {
+      if (!checkSourceEmail()) {
+        return;
+      }
       modalState.isMinimized = false;
       overlay.style.display = "flex";
       minimizedBar.style.display = "none";
@@ -663,9 +767,8 @@
       if (priorityGroup.value) {
         payload.priority = priorityGroup.value;
       }
-      const sender = findSender();
-      if (sender && sender.name) {
-        payload.senderName = sender.name;
+      if (snapshot.senderName) {
+        payload.senderName = snapshot.senderName;
       }
       if (sprintGroup.value) {
         payload.sprint = sprintGroup.value;
@@ -693,6 +796,7 @@
 
       sendToBackground("create-ticket", payload, (response) => {
         setStatusSuccess(response.issueId, response.url, response.warning);
+        created = true;
         // The ticket exists now; prevent creating a duplicate.
         submitButton.disabled = true;
         submitButton.textContent = "[✓] created";
@@ -775,7 +879,7 @@
 
     async function prepareImages() {
       const ownState = modalState;
-      const sources = collectImageSources();
+      const sources = snapshot.imageSources;
       if (sources.length === 0) {
         return;
       }
@@ -919,9 +1023,8 @@
     }
 
     function generateDraft() {
-      const latestEmail = extractEmail();
       const body = aiBodyInput.value.trim();
-      if (!latestEmail) {
+      if (!snapshot.subject) {
         setStatusMessage("unable to read the email.", "error");
         return;
       }
@@ -931,10 +1034,10 @@
       }
 
       const email = {
-        subject: latestEmail.subject,
-        from: latestEmail.from,
+        subject: snapshot.subject,
+        from: snapshot.from,
         body,
-        threadUrl: latestEmail.threadUrl
+        threadUrl: snapshot.threadUrl
       };
 
       const startedAt = Date.now();
@@ -946,6 +1049,7 @@
         descriptionInput.value = response.description;
         draftLabels = response.labels || [];
         draftEmail = email;
+        touched = true;
         setMode("manual");
         status.textContent = "";
         logLine(status, "ok", [
@@ -985,6 +1089,7 @@
       isMinimized: false,
       restore: restoreModal,
       minimize: minimizeModal,
+      refreshMinimized: updateTitles,
       close: closeModal
     });
 
@@ -1045,6 +1150,34 @@
       }
       setPriorityOptions(group, response.priorities);
     });
+  }
+
+  // Identifies the open email by Gmail's thread id (last segment of the URL hash) plus its subject.
+  function currentEmailKey() {
+    const subjectEl = findSubjectElement();
+    const subject = subjectEl ? subjectEl.textContent.trim() : "";
+    if (!subject || !findActiveEmailContainer()) {
+      return null;
+    }
+    const hash = (window.location.hash || "").replace(/^#/, "").split("?")[0];
+    const segments = hash.split("/").filter(Boolean);
+    const threadId = segments.length > 1 ? segments[segments.length - 1] : "";
+    return `${threadId}|${subject}`;
+  }
+
+  function captureEmailSnapshot() {
+    const email = extractEmail();
+    const sender = findSender();
+    return {
+      key: currentEmailKey(),
+      subject: email ? email.subject : "",
+      from: email ? email.from : "",
+      senderName: sender && sender.name ? sender.name : "",
+      body: email ? email.body : "",
+      threadUrl: email ? email.threadUrl : window.location.href,
+      external: findExternalParticipants(),
+      imageSources: collectImageSources()
+    };
   }
 
   function extractEmail() {
