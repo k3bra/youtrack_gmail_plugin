@@ -183,12 +183,10 @@
     modal.style.borderRadius = PANEL_RADIUS;
     modal.style.boxShadow = "0 6px 18px rgba(60, 64, 67, 0.2)";
     modal.style.width = "min(92vw, 520px)";
-    modal.style.maxHeight = "80vh";
-    modal.style.overflow = "auto";
-    modal.style.padding = "16px";
+    modal.style.maxHeight = "85vh";
+    modal.style.overflow = "hidden";
     modal.style.display = "flex";
     modal.style.flexDirection = "column";
-    modal.style.gap = "14px";
 
     const header = document.createElement("div");
     header.style.display = "flex";
@@ -196,10 +194,9 @@
     header.style.justifyContent = "space-between";
     header.style.gap = "12px";
     header.style.background = "#f8f9fa";
-    header.style.margin = "-16px -16px 8px";
     header.style.padding = "10px 12px";
     header.style.borderBottom = "1px solid #e0e0e0";
-    header.style.borderRadius = `${PANEL_RADIUS} ${PANEL_RADIUS} 0 0`;
+    header.style.flexShrink = "0";
 
     const title = document.createElement("div");
     title.textContent = type === "task" ? "Create Task" : "Create Spike";
@@ -235,6 +232,7 @@
     modeWrap.style.border = "1px solid #dadce0";
     modeWrap.style.borderRadius = "8px";
     modeWrap.style.overflow = "hidden";
+    modeWrap.style.alignSelf = "flex-start";
 
     const manualButton = document.createElement("button");
     manualButton.type = "button";
@@ -344,6 +342,18 @@
 
     let imageItems = [];
 
+    const imagePreview = document.createElement("img");
+    imagePreview.alt = "";
+    imagePreview.style.position = "fixed";
+    imagePreview.style.display = "none";
+    imagePreview.style.zIndex = "10002";
+    imagePreview.style.pointerEvents = "none";
+    imagePreview.style.background = "#fff";
+    imagePreview.style.border = "1px solid #dadce0";
+    imagePreview.style.borderRadius = "8px";
+    imagePreview.style.boxShadow = "0 6px 18px rgba(60, 64, 67, 0.3)";
+    imagePreview.style.objectFit = "contain";
+
     manualSection.appendChild(summaryInput);
     manualSection.appendChild(optionsRow);
     manualSection.appendChild(descriptionInput);
@@ -439,6 +449,10 @@
     actions.style.display = "flex";
     actions.style.justifyContent = "flex-end";
     actions.style.gap = "8px";
+    actions.style.padding = "12px 16px";
+    actions.style.borderTop = "1px solid #e0e0e0";
+    actions.style.background = "#fff";
+    actions.style.flexShrink = "0";
 
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
@@ -465,19 +479,30 @@
     actions.appendChild(cancelButton);
     actions.appendChild(submitButton);
 
-    modal.appendChild(header);
-    modal.appendChild(modeWrap);
-    modal.appendChild(manualSection);
-    modal.appendChild(aiSection);
     const uploadStatus = document.createElement("div");
     uploadStatus.style.fontSize = "12px";
     uploadStatus.style.color = "#5f6368";
 
-    modal.appendChild(status);
-    modal.appendChild(uploadStatus);
-    modal.appendChild(replyPanel);
+    // Header and actions stay pinned; only the body scrolls. Body rows must not shrink,
+    // otherwise the browser squashes them (e.g. the mode toggle) instead of scrolling.
+    const body = document.createElement("div");
+    body.style.flex = "1 1 auto";
+    body.style.minHeight = "0";
+    body.style.overflowY = "auto";
+    body.style.padding = "16px";
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.gap = "14px";
+    [modeWrap, manualSection, aiSection, status, uploadStatus, replyPanel].forEach((section) => {
+      section.style.flexShrink = "0";
+      body.appendChild(section);
+    });
+
+    modal.appendChild(header);
+    modal.appendChild(body);
     modal.appendChild(actions);
     overlay.appendChild(modal);
+    overlay.appendChild(imagePreview);
     document.body.appendChild(overlay);
 
     const minimizedBar = document.createElement("div");
@@ -919,32 +944,94 @@
     }
 
     function renderImageItem(item) {
-      const label = document.createElement("label");
-      label.style.display = "flex";
-      label.style.flexDirection = "column";
-      label.style.alignItems = "center";
-      label.style.gap = "2px";
-      label.style.cursor = "pointer";
-      label.title = `${item.name} (${formatBytes(item.blob.size)})`;
+      const tile = document.createElement("div");
+      tile.style.display = "flex";
+      tile.style.flexDirection = "column";
+      tile.style.alignItems = "center";
+      tile.style.gap = "2px";
+      tile.style.cursor = "pointer";
+      tile.title = `${item.name} — click to include or exclude`;
+
+      const frame = document.createElement("div");
+      frame.style.position = "relative";
+      frame.style.borderRadius = "6px";
+      frame.style.outlineOffset = "1px";
 
       const img = document.createElement("img");
       img.src = item.previewUrl;
       img.alt = item.name;
-      img.style.height = "64px";
-      img.style.maxWidth = "110px";
+      img.style.display = "block";
+      img.style.height = "72px";
+      img.style.width = "110px";
       img.style.objectFit = "cover";
       img.style.border = "1px solid #dadce0";
-      img.style.borderRadius = "4px";
+      img.style.borderRadius = "6px";
+      img.style.transition = "opacity 0.15s";
 
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = true;
+      checkbox.setAttribute("aria-label", `Attach ${item.name}`);
+      checkbox.style.position = "absolute";
+      checkbox.style.top = "4px";
+      checkbox.style.left = "4px";
+      checkbox.style.margin = "0";
+      checkbox.style.width = "16px";
+      checkbox.style.height = "16px";
+      checkbox.style.cursor = "pointer";
 
-      label.appendChild(img);
-      label.appendChild(checkbox);
-      imagesGrid.appendChild(label);
+      const size = document.createElement("span");
+      size.textContent = formatBytes(item.blob.size);
+      size.style.fontSize = "11px";
+      size.style.color = "#5f6368";
+
+      const syncState = () => {
+        img.style.opacity = checkbox.checked ? "1" : "0.35";
+        frame.style.outline = checkbox.checked ? "2px solid #1a73e8" : "none";
+      };
+
+      tile.addEventListener("click", (event) => {
+        if (event.target === checkbox || checkbox.disabled) {
+          return;
+        }
+        checkbox.checked = !checkbox.checked;
+        syncState();
+      });
+      checkbox.addEventListener("change", syncState);
+
+      img.addEventListener("mouseenter", () => showImagePreview(item.previewUrl, frame));
+      img.addEventListener("mouseleave", hideImagePreview);
+
+      frame.appendChild(img);
+      frame.appendChild(checkbox);
+      tile.appendChild(frame);
+      tile.appendChild(size);
+      imagesGrid.appendChild(tile);
+      syncState();
 
       return checkbox;
+    }
+
+    function showImagePreview(url, anchor) {
+      imagePreview.src = url;
+      imagePreview.style.display = "block";
+
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(480, window.innerWidth - 32);
+      const height = Math.min(360, window.innerHeight - 32);
+      imagePreview.style.maxWidth = `${width}px`;
+      imagePreview.style.maxHeight = `${height}px`;
+
+      // Prefer showing the preview above the thumbnail, otherwise below; keep it on screen.
+      const left = Math.min(Math.max(16, rect.left), window.innerWidth - width - 16);
+      const top = rect.top - height - 8 >= 16 ? rect.top - height - 8 : Math.min(rect.bottom + 8, window.innerHeight - height - 16);
+      imagePreview.style.left = `${left}px`;
+      imagePreview.style.top = `${Math.max(16, top)}px`;
+    }
+
+    function hideImagePreview() {
+      imagePreview.style.display = "none";
+      imagePreview.removeAttribute("src");
     }
 
     function generateDraft() {
@@ -1273,6 +1360,9 @@
   }
 
   function formatBytes(bytes) {
+    if (bytes < 1024 * 1024) {
+      return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
