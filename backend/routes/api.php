@@ -6,6 +6,7 @@ use App\Http\Controllers\PmsDocumentExampleController;
 use App\Http\Controllers\PmsDocumentTicketController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketFromEmailController;
+use App\Http\Controllers\TicketTriageController;
 use App\Http\Controllers\YouTrackIssueController;
 use App\Http\Middleware\ClientKeyMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -44,3 +45,15 @@ Route::middleware([ClientKeyMiddleware::class])
 
 Route::middleware([ClientKeyMiddleware::class])
     ->patch('/youtrack/issues/{issueId}', [YouTrackIssueController::class, 'update']);
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->post('/tickets/{issueId}/triage', [TicketTriageController::class, 'store'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->get('/tickets/{issueId}/triage', [TicketTriageController::class, 'show'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
+
+Route::middleware([ClientKeyMiddleware::class])
+    ->post('/tickets/{issueId}/triage/accept', [TicketTriageController::class, 'accept'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');

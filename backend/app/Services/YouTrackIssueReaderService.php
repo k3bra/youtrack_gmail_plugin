@@ -10,6 +10,10 @@ class YouTrackIssueReaderService
 {
     private const FIELDS = 'idReadable,summary,description,project(shortName,name),created,updated,customFields(name,$type,value(name,id,$type))';
 
+    private const TRIAGE_FIELDS = 'idReadable,summary,description,comments(text,author(name),created),'
+        . 'attachments(name,url),customFields(name,value(name)),'
+        . 'links(direction,linkType(name),issues(idReadable,summary))';
+
     public function fetchIssue(string $issueId): array
     {
         $baseUrl = config('tickets.youtrack_base_url');
@@ -56,6 +60,77 @@ class YouTrackIssueReaderService
             ],
             'fields' => $this->normalizeCustomFields($customFields),
         ];
+    }
+
+    /**
+     * Raw issue in the shape /fix-sprint-bugs expects for --ticket-file (its Step 2 fields).
+     */
+    public function fetchIssueForTriage(string $issueId): array
+    {
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
+
+        if (!is_string($baseUrl) || $baseUrl === '') {
+            throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
+        }
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('YOUTRACK_TOKEN is not set.');
+        }
+
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get(rtrim($baseUrl, '/') . '/api/issues/' . $issueId, ['fields' => self::TRIAGE_FIELDS]);
+
+        if ($response->status() === 404) {
+            throw new RuntimeException('YouTrack issue not found.', 404);
+        }
+
+        if (!$response->successful()) {
+            throw new RuntimeException('YouTrack API error: ' . $response->body());
+        }
+
+        $payload = $response->json();
+        if (!is_array($payload) || !isset($payload['idReadable'])) {
+            throw new RuntimeException('YouTrack response was not a valid issue.');
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Readable ids of the issues matching a YouTrack search query, e.g. "tag: ai-fix #Unresolved".
+     *
+     * @return list<string>
+     */
+    public function searchIssueIds(string $query, int $limit = 50): array
+    {
+        $baseUrl = config('tickets.youtrack_base_url');
+        $token = config('tickets.youtrack_token');
+
+        if (!is_string($baseUrl) || $baseUrl === '') {
+            throw new RuntimeException('YOUTRACK_BASE_URL is not set.');
+        }
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('YOUTRACK_TOKEN is not set.');
+        }
+
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get(rtrim($baseUrl, '/') . '/api/issues', [
+                'query' => $query,
+                'fields' => 'idReadable',
+                '$top' => $limit,
+            ]);
+
+        if (!$response->successful()) {
+            throw new RuntimeException('YouTrack API error: ' . $response->body());
+        }
+
+        return collect($response->json())
+            ->pluck('idReadable')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
+            ->values()
+            ->all();
     }
 
     private function normalizeCustomFields(mixed $customFields): array

@@ -5,6 +5,7 @@ use App\Http\Controllers\PmsDocumentDownloadController;
 use App\Http\Controllers\PmsDocumentTicketIndexController;
 use App\Http\Controllers\PluginTicketDestroyController;
 use App\Http\Controllers\PluginTicketIndexController;
+use App\Http\Controllers\PluginTicketTriageController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/plugin-tickets');
@@ -26,6 +27,12 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/plugin-tickets', PluginTicketIndexController::class);
 Route::delete('/plugin-tickets/{ticketRequest}', PluginTicketDestroyController::class);
+Route::post('/plugin-tickets/triage/{issueId}', [PluginTicketTriageController::class, 'store'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
+Route::get('/plugin-tickets/triage/{issueId}', [PluginTicketTriageController::class, 'show'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
+Route::post('/plugin-tickets/triage/{issueId}/accept', [PluginTicketTriageController::class, 'accept'])
+    ->where('issueId', '[A-Za-z][A-Za-z0-9_]*-[0-9]+');
 
 Route::get('/youtrack/issues/{issueId}', function (string $issueId) {
     return view('youtrack-issue', ['issueId' => $issueId]);

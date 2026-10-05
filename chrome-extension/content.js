@@ -82,7 +82,7 @@
 .ytx .ytx-muted { color: #9A9EA6; }
 .ytx .ytx-prompt { color: #FF4F9A; }
 .ytx .ytx-flag { color: #A796FF; }
-.ytx .ytx-badge { display: inline-flex; flex: 0 0 auto; width: 20px; height: 20px; align-items: center; justify-content: center; background: #FF318C; color: #0B0D10; font-weight: 700; font-size: 10px; box-shadow: 3px 3px 0 #6B57FF; }
+.ytx .ytx-badge { display: block; flex: 0 0 auto; width: 26px; height: 19px; }
 
 .ytx-overlay { position: fixed; inset: 0; z-index: 10001; display: flex; align-items: center; justify-content: center; background: rgba(5, 6, 8, 0.6); }
 .ytx-window { width: min(94vw, 680px); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; background: #16171B; border: 1px solid #34363D; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5); }
@@ -193,8 +193,33 @@
     }
   }
 
+  // HiJiffy arcs-and-dots mark, pink with a purple offset echo (same as backend/public/logo.svg).
+  // Built with createElementNS because Gmail enforces Trusted Types on innerHTML.
+  const LOGO_PATHS = [
+    "m27.9496 30.9707c-8.5516 0-15.51-6.9214-15.51-15.4307 0-1.7178 1.3993-3.1094 3.1257-3.1094 1.7263 0 3.1256 1.3916 3.1256 3.1094 0 5.0793 4.1534 9.2118 9.2587 9.2118 5.1054 0 9.2588-4.1325 9.2588-9.2118 0-1.7178 1.3993-3.1094 3.1256-3.1094 1.7264 0 3.1257 1.3916 3.1257 3.1094 0 8.5086-6.9577 15.4307-15.5101 15.4307z",
+    "m40.3581 9.34733c1.7134 0 3.1023-1.3855 3.1023-3.0946s-1.3889-3.09459-3.1023-3.09459c-1.7133 0-3.1023 1.38549-3.1023 3.09459s1.389 3.0946 3.1023 3.0946z",
+    "m15.51 0c8.5517 0 15.5101 6.92136 15.5101 15.4306 0 1.7178-1.3993 3.1094-3.1257 3.1094-1.7263 0-3.1256-1.3916-3.1256-3.1094 0-5.0793-4.1534-9.21176-9.2588-9.21176-5.1053 0-9.2587 4.13246-9.2587 9.21176 0 1.7178-1.39932 3.1094-3.12565 3.1094s-3.12565-1.3923-3.12565-3.1094c0-8.50924 6.95768-15.4306 15.51-15.4306z",
+    "m3.10229 27.8125c1.71335 0 3.1023-1.3855 3.1023-3.0946s-1.38895-3.0946-3.1023-3.0946-3.10229 1.3855-3.10229 3.0946 1.38894 3.0946 3.10229 3.0946z",
+  ];
+
   function badge() {
-    return h("span", "ytx-badge", { text: "YT", attrs: { "aria-hidden": "true" } });
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "ytx-badge");
+    svg.setAttribute("viewBox", "0 0 48 35");
+    svg.setAttribute("aria-hidden", "true");
+    [["#6B57FF", "translate(3.5 3.5)"], ["#FF318C", null]].forEach(([fill, transform]) => {
+      const group = document.createElementNS(ns, "g");
+      group.setAttribute("fill", fill);
+      if (transform) group.setAttribute("transform", transform);
+      LOGO_PATHS.forEach((d) => {
+        const path = document.createElementNS(ns, "path");
+        path.setAttribute("d", d);
+        group.appendChild(path);
+      });
+      svg.appendChild(group);
+    });
+    return svg;
   }
 
   function ensureButtons() {
