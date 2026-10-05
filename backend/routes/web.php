@@ -3,13 +3,11 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PmsDocumentDownloadController;
 use App\Http\Controllers\PmsDocumentTicketIndexController;
+use App\Http\Controllers\PluginTicketDestroyController;
+use App\Http\Controllers\PluginTicketIndexController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return auth()->check()
-        ? redirect('/pms-documents')
-        : redirect('/login');
-});
+Route::redirect('/', '/plugin-tickets');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -25,6 +23,9 @@ Route::middleware('auth')->group(function () {
     Route::view('/pms-documents/{pmsDocument?}', 'pms-documents');
     Route::get('/pms-document-tickets', PmsDocumentTicketIndexController::class);
 });
+
+Route::get('/plugin-tickets', PluginTicketIndexController::class);
+Route::delete('/plugin-tickets/{ticketRequest}', PluginTicketDestroyController::class);
 
 Route::get('/youtrack/issues/{issueId}', function (string $issueId) {
     return view('youtrack-issue', ['issueId' => $issueId]);

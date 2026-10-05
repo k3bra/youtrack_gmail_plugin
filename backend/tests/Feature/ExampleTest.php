@@ -10,21 +10,18 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * A basic test example.
-     */
-    public function test_guest_root_redirects_to_login(): void
+    public function test_guest_root_redirects_to_plugin_tickets(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/login');
+        $response->assertRedirect('/plugin-tickets');
     }
 
-    public function test_authenticated_root_redirects_to_pms_documents(): void
+    public function test_authenticated_root_redirects_to_plugin_tickets(): void
     {
         $response = $this->actingAs(User::factory()->create())->get('/');
 
-        $response->assertRedirect('/pms-documents');
+        $response->assertRedirect('/plugin-tickets');
     }
 
     public function test_authenticated_login_redirects_to_pms_documents(): void
